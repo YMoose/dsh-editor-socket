@@ -111,3 +111,5 @@ npm run build
 ```sh
 node scripts/smoke-vscode.mjs ../vsc-agents-connector/out/src/agents/dsh/index.js
 ```
+
+真实 VS Code + Chrome 的启动脚本、操作步骤、录制验证和本次界面问题的修复记录见 [GUI 验收文档](https://github.com/YMoose/dsh-editor-socket/blob/main/docs/testing/gui.md)（源码路径 `docs/testing/gui.md`）。测试工具和截图只保留在源码仓库，不加入插件运行包。
