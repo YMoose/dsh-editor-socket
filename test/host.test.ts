@@ -11,6 +11,7 @@ import { LlmAdapter, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import * as Socket from '../src/index.ts'
 import { EditorPlug } from '../src/plug.ts'
 import type { Registration } from '../src/transport.ts'
@@ -52,6 +53,17 @@ test('real DSH loop + native IPC routes + authenticated editor socket', { timeou
   const plug = new EditorPlug({ url: registration.url, headers: { authorization: `Bearer ${registration.token}` } })
   t.after(() => plug.disconnect().catch(() => {}))
   assert.equal((await plug.sessions()).length, 2)
+  assert.ok((await plug.sessions()).every(session => session.title === undefined), 'title service is optional')
+  const titles = await ctx.plugin(SessionTitleService, { fallbackMaxWords: 8, fallbackMaxBytes: 64, maxTitleBytes: 256 })
+  assert.ok((await plug.sessions()).every(session => session.title === undefined), 'new sessions have no title yet')
+  ctx.sessionTitle.rename(agent.session, '编辑器上下文接入')
+  assert.equal((await plug.sessions()).find(session => session.sessionId === agent.id)?.title, '编辑器上下文接入')
+  ctx.sessionTitle.rename(agent.session, '重命名后的会话')
+  const renamed = await plug.sessions()
+  assert.equal(renamed.find(session => session.sessionId === agent.id)?.title, '重命名后的会话')
+  assert.equal(renamed.find(session => session.sessionId === other.id)?.title, undefined, 'titles are session-scoped')
+  await titles.dispose()
+  assert.ok((await plug.sessions()).every(session => session.title === undefined), 'unloading titles keeps discovery available')
   await plug.connect({ sessionId: agent.id, clientId: 'test-window', editor: 'VS Code', workspace: '/tmp' })
   await plug.update(selection())
   assert.equal(recorder.requests.length, 0, 'editor updates must not start a model task')

@@ -46,7 +46,7 @@ Valid business errors use HTTP 200 with `result.ok: false`.
 | Method | Payload | Result |
 | --- | --- | --- |
 | `info` | `{}` | `{protocolVersion, limits}` |
-| `sessions` | `{}` | Active `{sessionId, directory, status}` entries |
+| `sessions` | `{}` | Active `{sessionId, directory, status, title?}` entries |
 | `connect` | `{sessionId, clientId, editor, workspace}` | `{connectionId, heartbeatMs, state}` |
 | `state` | `{sessionId}` | Current editor state |
 | `watch` | `{sessionId, version}` | State immediately if changed, otherwise on change or after 25 s |
@@ -56,6 +56,11 @@ Valid business errors use HTTP 200 with `result.ok: false`.
 | `heartbeat` | Mutation | State; renew lease |
 | `disconnect` | Mutation | State; release lease, clear live, retain pins |
 | `edit` | `{sessionId, version, action, id?}` | State; composer action `pin`, `clear`, `remove`, or `reset` |
+
+`title` is read from DSH's current title projection on each discovery request,
+so a subsequent request reflects automatic titles and user renames. It is omitted
+before a title exists or when the host does not mount the title service; editors
+should fall back to the session ID.
 
 Mutation fields are `{sessionId, connectionId, sequence}`. Sequence starts at 1
 and increases for every mutation, including heartbeat. Old/duplicate sequences

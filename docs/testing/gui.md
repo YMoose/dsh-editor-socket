@@ -82,6 +82,21 @@ node scripts/gui/vscode.mjs "$GUI_RUN" file beta.ts
 
 `select` 的参数是可见区域中从 1 开始的起始行与**不包含在范围内的结束行**，适用于 fixture 这种未滚动、没有折叠和换行的小文件。它会失败于找不到可见行的情况；不是通用的代码编辑器自动化接口。
 
+## 会话标题回归
+
+socket 0.1.1 起，`sessions` 从 dsh 的 `title` projection 返回当前标题。
+`test/host.test.ts` 覆盖无标题服务、新会话、中文标题、重命名、会话隔离和标题服务卸载；
+`scripts/smoke-vscode.mjs` 验证编译后的 VS Code adapter 能取得真实 DSH 标题及后续重命名。
+连接器的生命周期测试覆盖标题保存、恢复、切换到无标题会话及长标题提示。
+
+GUI 复查时，在 DSH 重命名会话，再执行 **Connect to Local Service**：候选项应显示新标题，
+选中后状态栏应显示相同标题，悬停保留完整标题和会话 ID。状态栏保存的是连接时取得的标题，
+目前不订阅重命名事件，需要重新连接刷新。
+
+本地通过链接安装插件时，构建只更新磁盘文件。若 HMR 的 `root` 为空，代码要等 profile
+重新组合或 DSH 重启才生效；不能仅凭构建成功判断正在运行的服务已经更新。
+可只读调用 `sessions` 检查返回值，避免为验收改动用户已有会话。
+
 ## 验证未保存文本与发送时机
 
 1. 在 VS Code 打开 `beta.ts`。

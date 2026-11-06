@@ -12,6 +12,7 @@
 - 会话隔离、单编辑器租约、递增序号；断线约 30 秒后清理跟随引用。固定引用保留到发送或手动清除。
 - 已提交的快照进入 dsh 会话日志，支持插件重载后的待处理消息恢复。实时跟随和未提交的固定引用只保存在内存中。
 - dsh 输入区使用原有 HTTP / Desktop IPC 通道；编辑器使用仅绑定 `127.0.0.1` 的独立接口。
+- 会话发现返回 dsh 的当前标题（含用户重命名），没有标题时由编辑器回退显示会话 ID。
 
 目前验证的版本为 **dsh 0.2.2-rc.1、Node.js 26.4.0**。包要求 Node.js ≥24.9.0，并锁定该 dsh 版本；升级 dsh 后需要重新验证其插件 API。
 
@@ -28,7 +29,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-editor-socket
 
 重启对应 dsh profile。Desktop 用户应使用 Desktop 安装附带的 `dsh` 命令管理已初始化的 `desktop` profile；npm 安装的 CLI 不管理 Desktop profile。
 
-也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.1.0.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
+也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.1.1.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
 
 ## 编辑器接入
 

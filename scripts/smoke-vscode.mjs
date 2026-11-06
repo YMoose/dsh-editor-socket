@@ -10,6 +10,7 @@ import * as Connection from '@deepseek-ai/dsh-client-connection'
 import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { LlmAdapter, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import * as Socket from '../lib/index.js'
 import { discoverSockets } from '../lib/discovery.js'
 
@@ -41,9 +42,14 @@ try {
   ctx.llm.registerAdapter(['mock'], recorder)
   const harness = await mountAgentLoopTestHarness(ctx)
   const agent = await harness.create(SessionId('vscode-smoke'), { provider: 'mock', model: 'mock' }, { cwd: dir })
+  await ctx.plugin(SessionTitleService, { fallbackMaxWords: 8, fallbackMaxBytes: 64, maxTitleBytes: 256 })
+  ctx.sessionTitle.rename(agent.session, 'VS Code 会话标题验证')
   adapter = createDshAdapter({ discover: () => discoverSockets(discoveryDirectory) })
   const groups = await adapter.discoverSessions(dir)
   assert.equal(groups.length, 1)
+  assert.equal(groups[0].sessions[0].title, 'VS Code 会话标题验证')
+  ctx.sessionTitle.rename(agent.session, '重命名后的 VS Code 会话')
+  assert.equal((await adapter.discoverSessions(dir))[0].sessions[0].title, '重命名后的 VS Code 会话')
   session = { agentId: 'dsh', sessionID: agent.id, url: groups[0].url, header: groups[0].header, directory: dir }
   await adapter.connect(session)
   await adapter.liveFollow.update(session, {
