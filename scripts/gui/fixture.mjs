@@ -6,9 +6,9 @@ import { LlmAdapter, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 
 export const name = 'editor-gui-fixture'
-export const inject = ['llm', 'agentLoop']
+export const inject = ['llm', 'agentLoop', 'sessionTitle']
 
-export async function apply(ctx, { workspace, output }) {
+export async function apply(ctx, { workspace, output, titleTest = false }) {
   class Recorder extends LlmAdapter {
     async resolveModel(provider, model) { return { provider, id: model, name: 'GUI context recorder' } }
     async *stream(options) {
@@ -27,8 +27,17 @@ export async function apply(ctx, { workspace, output }) {
   // Restarting a run must not collide with its already persisted previous session.
   const id = SessionId(`editor-gui-${randomUUID()}`)
   const agent = await ctx.agentLoop.create(id, { provider: 'editor-gui', model: 'recorder' }, { cwd: workspace })
-  await writeFile(join(output, 'session.json'), JSON.stringify({ sessionId: id, directory: workspace }))
   // An entirely empty Agent can be absent from the normal sidebar list.
   agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Initialize editor GUI test session' }] }))
   await agent.whenIdle()
+  const session = { sessionId: id, directory: workspace }
+  if (titleTest) {
+    session.title = '编辑器标题回归：初始会话'
+    ctx.sessionTitle.rename(agent.session, session.title)
+    // A second, untitled live agent forces the real connection picker to open
+    // and lets the test catch stale titles when switching sessions.
+    session.untitledSessionId = SessionId(`editor-untitled-${randomUUID()}`)
+    await ctx.agentLoop.create(session.untitledSessionId, { provider: 'editor-gui', model: 'recorder' }, { cwd: workspace })
+  }
+  await writeFile(join(output, 'session.json'), JSON.stringify(session))
 }

@@ -5,8 +5,10 @@ import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const socketRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const connectorRoot = resolve(process.argv[2] ?? join(socketRoot, '../vsc-agents-connector'))
-const debugPort = Number(process.argv[3] ?? 9223)
+const titleTest = process.argv.includes('--titles')
+const args = process.argv.slice(2).filter(arg => arg !== '--titles')
+const connectorRoot = resolve(args[0] ?? join(socketRoot, '../vsc-agents-connector'))
+const debugPort = Number(args[1] ?? 9223)
 if (!Number.isInteger(debugPort) || debugPort < 1024 || debugPort > 65535) throw new Error('Use a free debug port between 1024 and 65535')
 const connector = JSON.parse(await readFile(join(connectorRoot, 'package.json'), 'utf8'))
 if (connector.name !== 'vsc-agents-connector') throw new Error('Pass the vsc-agents-connector checkout')
@@ -33,7 +35,7 @@ await writeFile(join(profile, 'package.json'), JSON.stringify({
 await writeFile(join(profile, 'cordis.patch.yml'), '[]\n')
 await symlink(socketRoot, join(profile, 'node_modules/dsh-editor-socket'), process.platform === 'win32' ? 'junction' : 'dir')
 // JSON strings are valid YAML scalars, including paths containing spaces.
-await writeFile(join(root, 'test.patch.yml'), `- insert:\n    - id: editor-gui-fixture\n      name: ${JSON.stringify(join(socketRoot, 'scripts/gui/fixture.mjs'))}\n      config:\n        workspace: ${JSON.stringify(run.workspace)}\n        output: ${JSON.stringify(root)}\n`)
+await writeFile(join(root, 'test.patch.yml'), `- insert:\n    - id: editor-gui-fixture\n      name: ${JSON.stringify(join(socketRoot, 'scripts/gui/fixture.mjs'))}\n      config:\n        workspace: ${JSON.stringify(run.workspace)}\n        output: ${JSON.stringify(root)}\n        titleTest: ${titleTest}\n`)
 await writeFile(join(run.vscodeUser, 'User/settings.json'), JSON.stringify({
   'telemetry.telemetryLevel': 'off', 'update.mode': 'none',
   'extensions.autoCheckUpdates': false, 'extensions.autoUpdate': false,

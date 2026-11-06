@@ -93,6 +93,49 @@ GUI 复查时，在 DSH 重命名会话，再执行 **Connect to Local Service**
 选中后状态栏应显示相同标题，悬停保留完整标题和会话 ID。状态栏保存的是连接时取得的标题，
 目前不订阅重命名事件，需要重新连接刷新。
 
+可复用的标题 GUI 断言脚本为 `scripts/gui/check-title.mjs`。先准备专用 fixture，再按上面的启动步骤
+启动 DSH 和 VS Code（替换 `GUI_RUN` 为新生成的路径）：
+
+```sh
+node scripts/gui/prepare.mjs /path/to/vsc-agents-connector 9223 --titles
+```
+
+`--titles` 创建一条中文标题会话和一个无标题的活动 agent；后者确保连接时出现选择器。
+脚本按 `session.json` 中的 ID 查找条目，不依赖候选顺序或总数。关闭首次启动提示后运行：
+
+```sh
+node scripts/gui/check-title.mjs "$GUI_RUN"
+```
+
+它通过真实鼠标点击状态栏、选中会话并打开悬停提示，断言选择器标题、工作区、连接后的标题和
+完整会话 ID。不会调用 adapter 或 socket 接口来代替 UI 操作。
+
+接着在 Chrome 打开 fixture 的 `编辑器标题回归：初始会话`：悬停左侧会话行，点击行内
+**Session actions → Rename**（不是会话顶部的 **More actions**），输入下列标题并确认。
+然后运行同一脚本验证重新发现与连接：
+
+```sh
+GUI_TITLE='重命名 GUI title regression checks status truncation and full hover 🧪'
+node scripts/gui/check-title.mjs "$GUI_RUN" "$GUI_TITLE"
+```
+
+这个标题超过状态栏的 40 字符显示上限，但在 DSH 默认的 `maxTitleBytes: 80` 内。
+脚本检查状态栏缩略、实际悬停提示保留完整标题和 ID。测试期望必须是 DSH **保存后的标题**；
+过长的全中文输入会先被 DSH 按 UTF-8 字节截断，不能当作连接器丢失标题。
+
+在测试 VS Code 的命令面板执行 **Developer: Reload Window**，等待窗口完成重载后验证保存的标题，
+最后验证切换到无标题会话：
+
+```sh
+node scripts/gui/check-title.mjs "$GUI_RUN" "$GUI_TITLE" --restored
+node scripts/gui/check-title.mjs "$GUI_RUN" --untitled
+```
+
+`--restored` 不发起连接，只检查重载后的状态栏和悬停；`--untitled` 重新打开选择器并选中无标题会话，
+检查 ID 回退及旧标题清理。每次检查还会确认录制模型日志没有增加；成功追加 `title-checks.jsonl`，
+截图写入 `screenshots/title-<initial|renamed|restored|untitled>-<picker|status>.png`。
+断言失败返回非零退出码。脚本是需要真实桌面环境的 GUI 验收项，不放进普通 `npm test`。
+
 本地通过链接安装插件时，构建只更新磁盘文件。若 HMR 的 `root` 为空，代码要等 profile
 重新组合或 DSH 重启才生效；不能仅凭构建成功判断正在运行的服务已经更新。
 可只读调用 `sessions` 检查返回值，避免为验收改动用户已有会话。
@@ -132,6 +175,14 @@ node scripts/gui/vscode.mjs "$GUI_RUN" screenshot
 ## 2026-11-06 验收记录
 
 以上核心交互均已在真实界面执行通过，包括：实际拖选、两端固定操作、文件切换、清除／移除、未保存文本、网页发送、一次性消费、断开与重连。网页控制台未出现 error / warn。
+
+标题补充回归也已通过：`initial`、`renamed`、`restored`、`untitled` 四项 GUI 检查，覆盖中文、
+中英文与 emoji 长标题、网页重命名后重连、真实窗口重载恢复、无标题回退和完整悬停提示。
+模型请求数从初始化到测试结束保持 2 次；Chrome 控制台无 error / warn。
+
+长标题的状态栏缩略与完整悬停（实际界面裁剪）：
+
+![VS Code 长标题缩略和完整悬停提示](images/vscode-session-title.png)
 
 本次发现并修复了一个仅渲染单元测试无法发现的布局问题：`conversation.input.dock` 位于 InputBar 的居中容器之外，原引用条占满会话栏宽度，贴在左侧。修复后引用条使用宿主的 `--dsh-composer-card-max-width` 和 `--dsh-composer-side-clearance`，跟随输入框的宽度设置。
 

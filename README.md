@@ -114,3 +114,5 @@ node scripts/smoke-vscode.mjs ../vsc-agents-connector/out/src/agents/dsh/index.j
 ```
 
 真实 VS Code + Chrome 的启动脚本、操作步骤、录制验证和本次界面问题的修复记录见 [GUI 验收文档](https://github.com/YMoose/dsh-editor-socket/blob/main/docs/testing/gui.md)（源码路径 `docs/testing/gui.md`）。测试工具和截图只保留在源码仓库，不加入插件运行包。
+
+标题 GUI 回归使用 `prepare.mjs --titles` 和 `check-title.mjs`，覆盖选择器、状态栏、完整悬停提示、网页重命名后重连、窗口重载恢复以及无标题回退；具体命令见上述文档的「会话标题回归」。
