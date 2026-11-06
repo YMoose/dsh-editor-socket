@@ -1,17 +1,12 @@
 /** Editor-neutral wire contract. All line numbers are one-based and inclusive. */
 export const CHANNEL = '/editor-socket'
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 export interface EditorSnapshot {
   /** Path in the DSH host's filesystem namespace. The socket never reads this file. */
   readonly path: string
   readonly workspace: string
   readonly selection?: { readonly start: number; readonly end: number; readonly text?: string }
-}
-
-export interface PinnedContext {
-  readonly id: string
-  readonly snapshot: EditorSnapshot
 }
 
 export interface EditorState {
@@ -21,7 +16,6 @@ export interface EditorState {
   readonly connected: boolean
   readonly editor: string | null
   readonly live: EditorSnapshot | null
-  readonly pinned: readonly PinnedContext[]
 }
 
 export interface SessionDescriptor {
@@ -54,7 +48,6 @@ export interface Mutation {
 
 export interface ProtocolLimits {
   readonly maxSelectionBytes: number
-  readonly maxPinned: number
   readonly maxSessions: number
   readonly leaseMs: number
   readonly watchMs: number

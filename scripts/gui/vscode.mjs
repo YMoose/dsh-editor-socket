@@ -10,7 +10,14 @@ const cdp = await connect(run)
 const control = process.platform === 'darwin' ? 4 : 2
 const settle = () => new Promise(resolve => setTimeout(resolve, 400))
 try {
-  if (!['inspect', 'screenshot'].includes(action)) await cdp.call('Page.bringToFront')
+  if (!['inspect', 'screenshot'].includes(action)) {
+    await cdp.call('Page.bringToFront')
+    const deadline = Date.now() + 3000
+    while (!await cdp.evaluate('document.hasFocus()')) {
+      if (Date.now() >= deadline) throw new Error('VS Code did not acquire focus')
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+  }
   if (action === 'command' || action === 'open') {
     await cdp.key('p', 'KeyP', 80, action === 'command' ? control | 8 : control)
     const deadline = Date.now() + 3000

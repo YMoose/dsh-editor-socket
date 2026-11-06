@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { startSocket } from '../src/transport.ts'
 import { discoverSockets } from '../src/discovery.ts'
 import { EditorPlug } from '../src/plug.ts'
+import { PROTOCOL_VERSION } from '../src/protocol.ts'
 import { EditorStore } from '../src/store.ts'
 import { resolveConfig } from '../src/config.ts'
 
@@ -20,6 +21,8 @@ test('discovery validates owner-only loopback registrations; transport bounds an
   await writeFile(bogus, 'null', { mode: 0o600 })
   const foreign = { ...registration, instanceId: randomUUID(), url: 'https://example.org' }
   await writeFile(join(directory, `${foreign.instanceId}.json`), JSON.stringify(foreign), { mode: 0o600 })
+  const legacy = { ...registration, instanceId: randomUUID(), protocolVersion: 1 }
+  await writeFile(join(directory, `${legacy.instanceId}.json`), JSON.stringify(legacy), { mode: 0o600 })
   await symlink(socket.filename, join(directory, `${randomUUID()}.json`))
   assert.deepEqual(await discoverSockets(directory), [registration])
   const request = (body: string, headers = {}) => fetch(`${registration.url}/editor-socket/info`, {
@@ -37,12 +40,12 @@ test('discovery validates owner-only loopback registrations; transport bounds an
   await assert.rejects(readFile(socket.filename), { code: 'ENOENT' })
 })
 
-test('plug serializes updates and pins, freezes caller data, and closes before accepting new edits', async t => {
+test('plug serializes updates and clears, freezes caller data, and closes before accepting new edits', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'editor-plug-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const store = new EditorStore(resolveConfig())
   const socket = await startSocket(async (method, input) => {
-    if (method === 'info') return { ok: true, value: { protocolVersion: 1 } }
+    if (method === 'info') return { ok: true, value: { protocolVersion: PROTOCOL_VERSION } }
     if (method === 'connect') return { ok: true, value: store.connect(input as Parameters<EditorStore['connect']>[0], '/tmp') }
     return { ok: true, value: store.mutate(method, input) }
   }, directory)
@@ -54,10 +57,12 @@ test('plug serializes updates and pins, freezes caller data, and closes before a
   const snapshot = { path: '/tmp/a.ts', workspace: '/tmp' }
   const update = plug.update(snapshot)
   snapshot.path = '/tmp/mutated.ts'
-  const pin = plug.pin()
+  const clear = plug.clear()
   const disconnect = plug.disconnect()
   await assert.rejects(plug.clear(), /not connected/)
-  await Promise.all([update, pin, disconnect])
-  assert.equal(store.state('s').pinned[0]?.snapshot.path, '/tmp/a.ts')
+  assert.equal((await update).live?.path, '/tmp/a.ts')
+  await Promise.all([clear, disconnect])
+  assert.equal(store.state('s').live, null)
+  assert.equal((await fetch(`${socket.registration.url}/editor-socket/pin`, { method: 'POST', headers: { authorization: `Bearer ${socket.registration.token}` } })).status, 404)
   assert.equal(store.state('s').connected, false)
 })

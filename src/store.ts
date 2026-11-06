@@ -7,7 +7,6 @@ interface Entry {
   version: string
   lease?: { id: string; clientId: string; editor: string; sequence: number; expires: number }
   live: EditorSnapshot | null
-  pinned: Array<{ id: string; snapshot: EditorSnapshot }>
 }
 
 /** Owns transient editor state, independently of model activity and persistent Session history. */
@@ -30,7 +29,7 @@ export class EditorStore {
     if (entry?.lease && entry.lease.clientId !== input.clientId) throw new SocketError('busy', 'This session is connected to another editor window')
     if (!entry) {
       if (this.entries.size >= this.limits.maxSessions) throw new SocketError('capacity', 'Too many connected editor sessions')
-      entry = { workspace, version: this.version(), live: null, pinned: [] }
+      entry = { workspace, version: this.version(), live: null }
       this.entries.set(input.sessionId, entry)
     }
     if (entry.workspace !== workspace) throw new SocketError('workspace-mismatch', 'Clear this session before connecting a different workspace')
@@ -52,15 +51,8 @@ export class EditorStore {
     if (!entry?.lease || entry.lease.id !== connectionId) throw new SocketError('disconnected', 'Reconnect the editor before sending updates')
     if (sequence <= entry.lease.sequence) return this.state(sessionId)
     // Validate the complete command before changing its sequence or renewing its lease.
-    let snapshot: EditorSnapshot | undefined
-    if (method === 'update' || (method === 'pin' && input.snapshot !== undefined)) snapshot = snapshotOf(input.snapshot, entry.workspace, this.limits)
-    if (method === 'pin') {
-      const candidate = snapshot ?? entry.live
-      if (!candidate) throw new SocketError('empty', 'There is no editor context to pin')
-      this.pin(entry, candidate)
-      entry.live = null
-    } else if (method === 'update') {
-      entry.live = snapshot!
+    if (method === 'update') {
+      entry.live = snapshotOf(input.snapshot, entry.workspace, this.limits)
     } else if (method === 'clear' || method === 'disconnect') {
       entry.live = null
     } else if (method !== 'heartbeat') throw new SocketError('not-found', 'Unknown editor operation')
@@ -78,18 +70,8 @@ export class EditorStore {
     this.expire()
     const entry = this.entries.get(sessionId)
     if (!entry || entry.version !== input.version) throw new SocketError('conflict', 'Editor context changed; try again')
-    if (input.action === 'pin') {
-      if (!entry.live) throw new SocketError('empty', 'There is no editor context to pin')
-      this.pin(entry, entry.live)
-      entry.live = null
-    } else if (input.action === 'clear') entry.live = null
-    else if (input.action === 'remove') {
-      const id = string(input.id, 'id', 256)
-      entry.pinned = entry.pinned.filter(item => item.id !== id)
-    } else if (input.action === 'reset') {
-      entry.live = null
-      entry.pinned = []
-    } else throw new SocketError('invalid', 'Unknown editor control')
+    if (input.action !== 'clear') throw new SocketError('invalid', 'Unknown editor control')
+    entry.live = null
     this.changed(sessionId, entry)
     return this.state(sessionId)
   }
@@ -100,23 +82,17 @@ export class EditorStore {
     return structuredClone({
       sessionId, version: entry?.version ?? `${this.epoch}:empty`,
       connected: !!entry?.lease, editor: entry?.lease?.editor ?? null,
-      live: entry?.live ?? null, pinned: entry?.pinned ?? [],
+      live: entry?.live ?? null,
     })
   }
 
-  /** Freeze exactly one user's context. Pins are one-shot; the live file stays available for later sends. */
+  /** Freeze exactly one user's context; later editor changes cannot alter this capture. */
   capture(sessionId: string, commit?: (snapshots: readonly EditorSnapshot[]) => void): readonly EditorSnapshot[] {
     this.expire()
     const entry = this.entries.get(sessionId)
     if (!entry) return []
-    const snapshots = entry.pinned.map(item => item.snapshot)
-    if (entry.live && !snapshots.some(item => JSON.stringify(item) === JSON.stringify(entry.live))) snapshots.push(entry.live)
-    const result = structuredClone(snapshots)
+    const result = structuredClone(entry.live ? [entry.live] : [])
     if (result.length) commit?.(result)
-    if (entry.pinned.length) {
-      entry.pinned = []
-      this.changed(sessionId, entry)
-    }
     return result
   }
 
@@ -171,15 +147,9 @@ export class EditorStore {
     for (const id of [...this.listeners.keys()]) this.notify(id)
   }
 
-  private pin(entry: Entry, snapshot: EditorSnapshot): void {
-    if (entry.pinned.some(item => JSON.stringify(item.snapshot) === JSON.stringify(snapshot))) return
-    if (entry.pinned.length >= this.limits.maxPinned) throw new SocketError('capacity', 'Remove a pinned reference before adding another')
-    entry.pinned.push({ id: randomUUID(), snapshot })
-  }
-
   private changed(sessionId: string, entry: Entry): void {
     entry.version = this.version()
-    if (!entry.lease && !entry.pinned.length && !entry.live) this.entries.delete(sessionId)
+    if (!entry.lease && !entry.live) this.entries.delete(sessionId)
     this.notify(sessionId)
   }
   private notify(sessionId: string): void { for (const listener of [...this.listeners.get(sessionId) ?? []]) listener() }

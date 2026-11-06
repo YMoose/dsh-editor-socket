@@ -9,7 +9,7 @@ export type Config = Partial<ProtocolLimits> & {
 /** Defaults bound transient state; every deployment limit can be set in cordis.yml. */
 export function resolveConfig(config: Config = {}): ProtocolLimits {
   const result: ProtocolLimits = {
-    maxSelectionBytes: 32_768, maxPinned: 8, maxSessions: 32,
+    maxSelectionBytes: 32_768, maxSessions: 32,
     leaseMs: 30_000, watchMs: 25_000, maxWatchers: 128,
     ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'discoveryDirectory')),
   }

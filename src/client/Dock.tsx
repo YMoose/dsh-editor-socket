@@ -1,9 +1,7 @@
 import * as React from 'react'
-import type { CSSProperties } from 'react'
 import type { PropsRuntime, PropsLocale, InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { label } from '../protocol.ts'
-import type { EditorSnapshot, EditorState } from '../protocol.ts'
+import type { EditorState } from '../protocol.ts'
 import { observeEditor } from './observer.ts'
 import type { Request } from './observer.ts'
 import type { NS, Key } from './locales.ts'
@@ -12,41 +10,54 @@ export interface DockInjected {
   readonly editorSessionId: string
   readonly requestEditor: Request
 }
-type Props = PropsRuntime<'conversation.input.dock'> & InjectFace<DockInjected> & PropsLocale<typeof NS>
-const row: CSSProperties = { display: 'flex', gap: '0.5em', alignItems: 'center', flexWrap: 'wrap' }
-const chip: CSSProperties = { border: '1px solid color-mix(in srgb, currentColor 20%, transparent)', borderRadius: '6px', padding: '0.25em 0.5em', maxWidth: '100%' }
-const button: CSSProperties = { color: 'inherit', background: 'transparent', border: '1px solid color-mix(in srgb, currentColor 20%, transparent)', borderRadius: '4px', padding: '0.15em 0.4em', cursor: 'pointer' }
-// Dock slots sit outside InputBar's centered wrapper. Share its width axis explicitly.
-const dock: CSSProperties = {
-  boxSizing: 'border-box', flex: 'none',
-  width: 'calc(100% - 2 * var(--dsh-composer-side-clearance, 16px))',
-  maxWidth: 'var(--dsh-composer-card-max-width, 952px)',
-  margin: '0 auto', padding: '0 14px', fontSize: '0.85em',
+type Props = PropsRuntime<'conversation.input.overlay'> & InjectFace<DockInjected> & PropsLocale<typeof NS>
+// DSH 0.2.2's overlay is normally a zero-height absolute anchor. While our
+// rail is present, let it size naturally. Keep its top at the card's top so
+// sibling slash/mention menus retain their bottom: 100% positioning anchor.
+// Public data attributes avoid depending on generated host CSS class names.
+const styles = `
+[data-composer-card] > [data-composer-overlay]:has([data-editor-socket]) {
+  position: relative; inset: auto; height: auto; min-width: 0; margin-top: -8px;
 }
+[data-editor-socket] { box-sizing: border-box; min-width: 0; padding: 8px 12px 0; font-size: 12px; line-height: 20px; }
+[data-editor-socket] .editor-socket-chip {
+  display: inline-flex; align-items: center; max-width: 100%; box-sizing: border-box;
+  gap: 6px; padding: 1px 3px 1px 8px; border: 1px solid var(--dsw-alias-border-l2, currentColor);
+  border-radius: 6px; color: var(--dsw-alias-label-secondary, inherit);
+}
+[data-editor-socket] .editor-socket-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+[data-editor-socket] .editor-socket-range { flex: none; margin-left: -6px; }
+[data-editor-socket] button {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: inherit; cursor: pointer;
+}
+[data-editor-socket] button:hover { background: var(--dsw-alias-interactive-bg-hover, #8882); }
+[data-editor-socket] button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+[data-editor-socket] button:disabled { opacity: .5; cursor: wait; }
+[data-editor-socket] [role=status] { overflow-wrap: anywhere; }
+`
 
 /** Presentation can also be rendered independently for a client smoke test. */
 export function EditorReferences({ state, pending, error, t, edit }: {
   state?: EditorState; pending: boolean; error?: string;
   t: (key: Key) => string;
-  edit: (action: string, id?: string) => void;
+  edit: (action: 'clear') => void;
 }) {
-  if (!error && !state?.live && !state?.pinned.length) return null
-  const reference = (snapshot: EditorSnapshot) => <code style={{ overflowWrap: 'anywhere' }} title={snapshot.path}>{label(snapshot)}</code>
-  return <section aria-label={t('title')} style={dock}>
+  if (!error && !state?.live) return null
+  const live = state?.live
+  const range = live?.selection
+  const lines = range ? `:${range.start}${range.end === range.start ? '' : `-${range.end}`}` : ''
+  return <section aria-label={t('title')} data-editor-socket>
+    <style>{styles}</style>
     {error && <div role="status">{error}</div>}
-    <div style={row}>
-      {state?.live && <div style={{ ...row, ...chip }}>
-        <span>{t('live')}</span>{reference(state.live)}
-        <button type="button" style={button} disabled={pending} onClick={() => edit('pin')}>{t('pin')}</button>
-        <button type="button" style={button} disabled={pending} onClick={() => edit('clear')} aria-label={t('clear')}>×</button>
-      </div>}
-      {state?.pinned.map(item => <div key={item.id} style={{ ...row, ...chip }}>
-        <span>{t('pinned')}</span>{reference(item.snapshot)}
-        <button type="button" style={button} disabled={pending} onClick={() => edit('remove', item.id)} aria-label={t('remove')}>×</button>
-      </div>)}
-      {!!state?.pinned.length && <button type="button" style={button} disabled={pending} onClick={() => edit('reset')}>{t('reset')}</button>}
-    </div>
-    {(state?.live || !!state?.pinned.length) && <small style={{ display: 'block', marginTop: '4px', color: 'var(--dsw-alias-label-secondary, inherit)' }}>{t('hint')}</small>}
+    {live && <div className="editor-socket-chip" title={`${live.path}${lines}\n${t('hint')}`}>
+      <span className="editor-socket-name">{live.path.split('/').pop()}</span>
+      {lines && <span className="editor-socket-range">{lines}</span>}
+      <button type="button" disabled={pending} onClick={() => edit('clear')} aria-label={t('clear')} title={t('clearHint')}>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+      </button>
+    </div>}
   </section>
 }
 
@@ -64,10 +75,10 @@ export function EditorDock({ editorSessionId, requestEditor, t }: Props) {
     })
     return () => abort.abort()
   }, [editorSessionId, requestEditor, t])
-  const edit = (action: string, id?: string) => {
+  const edit = (action: 'clear') => {
     if (!state || pending) return
     setPending(true)
-    void requestEditor('edit', { sessionId: editorSessionId, version: state.version, action, ...(id ? { id } : {}) })
+    void requestEditor('edit', { sessionId: editorSessionId, version: state.version, action })
       .then(() => { setError(undefined) }, error => { setError(error instanceof Error ? error.message : String(error)) })
       .finally(() => { setPending(false) })
   }

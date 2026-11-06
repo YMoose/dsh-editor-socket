@@ -61,7 +61,6 @@ export class EditorPlug {
   }
 
   update(snapshot: EditorSnapshot): Promise<EditorState> { return this.mutate('update', { snapshot }) }
-  pin(snapshot?: EditorSnapshot): Promise<EditorState> { return this.mutate('pin', snapshot ? { snapshot } : {}) }
   clear(): Promise<EditorState> { return this.mutate('clear') }
 
   disconnect(): Promise<void> {
@@ -79,7 +78,7 @@ export class EditorPlug {
   private mutate(method: string, extra: object = {}): Promise<EditorState> {
     const receipt = this.receipt
     if (!receipt || this.closing || (this.stopped && method !== 'disconnect')) return Promise.reject(new Error('Editor plug is not connected'))
-    // Serialization prevents a slow update overtaking an explicit pin or disconnect.
+    // Serialization prevents a slow update overtaking a clear or disconnect.
     const sequence = ++this.sequence
     const payload = structuredClone({ sessionId: receipt.state.sessionId, connectionId: receipt.connectionId, sequence, ...extra })
     const run = this.tail.then(async () => {

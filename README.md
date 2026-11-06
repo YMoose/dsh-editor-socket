@@ -1,21 +1,23 @@
 # dsh-editor-socket
 
-让 DeepSeek Harness（dsh）的现有输入区接收编辑器当前文件、选区和固定引用。点击或划选只同步上下文；用户在 dsh 发送消息时，上下文才随消息进入 agent。
+让 DeepSeek Harness（dsh）的现有输入区接收编辑器当前文件和选区。点击或划选只同步上下文；用户在 dsh 发送消息时，上下文才随消息进入 agent。
 
 `dsh-editor-socket` 是 dsh 侧的 **socket**；VS Code 的 `vsc-agents-connector` DSH adapter 是 **plug**。一个 VS Code 扩展可以同时提供 OpenCode、DSH 等多个 agent 的连接入口，每次连接一个会话。
 
 ## 功能
 
-- 跟随当前文件和选区，显示相对路径与行号；可附带未保存的选中文本。
-- 固定、清除、移除引用；固定引用随下一条用户消息发送一次，当前跟随引用持续有效。
+- 跟随当前文件和选区，在输入框内显示紧凑的文件名与行号标签，悬停查看完整路径；可附带未保存的选中文本。
+- 标签只提供 × 清除按钮；清除后不附带上下文，切换文件或选区后恢复跟随。
 - 发送时冻结上下文。排队期间继续切换文件，不会改写已提交消息的引用。
-- 会话隔离、单编辑器租约、递增序号；断线约 30 秒后清理跟随引用。固定引用保留到发送或手动清除。
-- 已提交的快照进入 dsh 会话日志，支持插件重载后的待处理消息恢复。实时跟随和未提交的固定引用只保存在内存中。
+- 会话隔离、单编辑器租约、递增序号；断线约 30 秒后清理跟随引用。
+- 已提交的快照进入 dsh 会话日志，支持插件重载后的待处理消息恢复。实时跟随只保存在内存中。
 - dsh 输入区使用原有 HTTP / Desktop IPC 通道；编辑器使用仅绑定 `127.0.0.1` 的独立接口。
 - 会话发现返回 dsh 的当前标题（含用户重命名），没有标题时由编辑器回退显示会话 ID。
 - Web / Desktop 会话发现包含尚未加载的历史会话；选中时通过 dsh 的原生接口恢复该会话，展开列表不会批量启动 agent。
 
 目前验证的版本为 **dsh 0.2.2-rc.1、Node.js 26.4.0**。包要求 Node.js ≥24.9.0，并锁定该 dsh 版本；升级 dsh 后需要重新验证其插件 API。
+
+0.2.0 使用协议 v2，移除了 pin 接口与固定引用状态；VS Code 请配套使用 `vsc-agents-connector 0.3.3+`。旧协议注册不会被新 SDK 发现，升级两端后重新连接。
 
 ## 安装
 
@@ -30,7 +32,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-editor-socket
 
 重启对应 dsh profile。Desktop 用户应使用 Desktop 安装附带的 `dsh` 命令管理已初始化的 `desktop` profile；npm 安装的 CLI 不管理 Desktop profile。
 
-也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.1.2.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
+也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.2.0.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
 
 ## 编辑器接入
 
@@ -58,7 +60,7 @@ for (const socket of await discoverSockets()) {
     workspace: session.directory, path: '/your/workspace/src/main.ts',
     selection: { start: 10, end: 15, text: 'selected buffer text' },
   })
-  // plug.pin() 固定当前引用；plug.clear() 清除跟随引用。
+  // plug.clear() 清除当前引用；后续 update() 恢复跟随。
   // 关闭编辑器连接时调用：
   await plug.disconnect()
   break
@@ -79,7 +81,6 @@ Web / Desktop 宿主通过 `sessionController` 枚举普通会话，包括磁盘
 - id: dsh-editor-socket
   config:
     maxSelectionBytes: 32768
-    maxPinned: 8
     maxSessions: 32
     leaseMs: 30000
     watchMs: 25000

@@ -26,8 +26,8 @@ export function apply(ctx: Context): void {
     if (!result.ok) throw new SocketError(result.error.code, result.error.message)
     return result.value
   }
-  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock', id: 'dsh-editor-socket', order: 20, locale: NS,
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay', id: 'dsh-editor-socket', order: 20, locale: NS,
     inject: (sessionId): DockInjected => ({ editorSessionId: sessionId, requestEditor: request }),
   }, EditorDock))
 }

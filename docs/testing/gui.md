@@ -60,14 +60,14 @@ node scripts/gui/vscode.mjs "$GUI_RUN" enter
 
 | 操作 | 应看到的结果 |
 | --- | --- |
-| 打开 `alpha.ts` 并连接 | VS Code 状态栏显示 DSH；dsh 输入区显示 `Following alpha.ts` |
-| 从第 2 行开头拖选到第 4 行开头 | 显示 `alpha.ts#L2-3`，不把未选中的第 4 行算进去 |
-| VS Code 执行 **Send Selection to Session** | 变为 `Pinned alpha.ts#L2-3`，不产生模型任务 |
-| 在 Explorer 点击 `beta.ts` | 同时显示 Following beta 和 Pinned alpha |
-| 网页点击 **Clear current reference** | 只移除 Following，Pinned 保留 |
-| 网页点击 **Remove reference** | 移除该固定引用；没有引用时整个引用条消失 |
-| 网页点击 **Pin reference** | 固定当前引用并移除 Following 状态 |
-| 从网页发送消息 | 对应上下文进入模型请求，固定引用被消费一次 |
+| 打开 `alpha.ts` 并连接 | VS Code 状态栏显示 DSH；输入框内部显示 `alpha.ts` 和 × |
+| 从第 2 行开头拖选到第 4 行开头 | 标签显示 `alpha.ts:2-3`，不把未选中的第 4 行算进去 |
+| VS Code 执行 **Send Selection to Session** | 更新当前引用，不产生固定引用或模型任务 |
+| 在 Explorer 点击 `beta.ts` | 标签替换成 `beta.ts` |
+| 网页点击 ×（**Clear current reference**） | 标签与所占空间消失；心跳不会使引用恢复 |
+| 再切换文件或划选 | 标签重新出现，恢复跟随 |
+| 从网页发送消息 | 当时的引用进入模型请求；跟随引用仍然显示 |
+| 清除引用后再发送消息 | 新消息后不附加编辑器上下文；历史上下文仍保留 |
 | VS Code 执行 **Disconnect** | 网页实时引用立即消失 |
 | 再次连接同一会话 | 无需改变选区，当前引用立即恢复 |
 
@@ -180,25 +180,25 @@ DSH 侧边栏还有独立的展示条数限制：每组默认只显示前 5 条�
 
 1. 在 VS Code 打开 `beta.ts`。
 2. 执行下面的 `unsaved` 动作，替换编辑器内容并全选；不要保存文件。
-3. 在网页点击 **Pin reference**。
+3. 确认框内标签显示 `beta.ts` 和实际选区行号，只有一个 × 按钮。
 4. 在 dsh 输入区输入以 `GUI_TEST_SEND:` 开头的消息，然后点击真实 **Send message** 按钮。
 5. 运行录制检查。
 
 ```sh
 node scripts/gui/vscode.mjs "$GUI_RUN" unsaved
-# 完成上面的网页固定、输入和发送操作后：
+# 完成上面的选区、输入和发送操作后：
 node scripts/gui/check-recording.mjs "$GUI_RUN"
 ```
 
 通过时输出包含 `unsavedSelectionCaptured: true` 和 `diskUnchanged: true`。脚本确认模型收到的 `editor-socket` 用户上下文含 `GUI_UNSAVED_MARKER`，且磁盘上的 `beta.ts` 没有该标记。仅看到网页 chip 不足以证明文本进入了模型请求。
 
-`model-requests.jsonl` 记录录制适配器收到的用户消息。初始化和自动标题生成也可能调用适配器：先等初始化完成，记录请求数基线，再做点击、划选和 pin。它们不应增加请求数；用户通过网页发送消息后才增加。本次基线为 2，完成全部前置编辑操作后仍为 2，网页发送后为 3。
+`model-requests.jsonl` 记录录制适配器收到的用户消息。初始化和自动标题生成也可能调用适配器：先等初始化完成，记录请求数基线，再做点击、划选和清除。它们不应增加请求数；用户通过网页发送消息后才增加。本次基线为 2，完成全部前置编辑操作后仍为 2，网页发送后为 3。
 
 ## 网页检查与截图
 
 Chrome DevTools 使用 `take_snapshot` 获取当前 uid，再执行 `click` / `fill`。切换会话或组件重载后重新取 snapshot，不复用已经失效的 uid。`evaluate_script` 用来读取状态和布局；验收操作本身通过实际控件完成。
 
-布局检查需要真实浏览器。读取 `section[aria-label="Editor context"]` 和输入卡片的 `getBoundingClientRect()`，确认左右边界一致；再用 `resize_page` 检查窄窗口和横向溢出。语言切换后应使用相应的 aria-label。
+布局检查需要真实浏览器。把 `scripts/gui/check-composer.js` 的内容作为 Chrome DevTools `evaluate_script` 的 `function` 参数执行，或在允许读取仓库路径的环境中使用 `sourcePath`。它只读检查引用确实在输入卡片内、不遮挡编辑区、只有一个带无障碍标签的移除按钮，页面没有横向溢出。使用 `resize_page` 复查宽窄窗口，以脚本返回的实际 `width` 为准。
 
 截图保存到 run 目录的 `screenshots/`，VS Code 截图可用：
 
@@ -208,7 +208,36 @@ node scripts/gui/vscode.mjs "$GUI_RUN" screenshot
 
 最后检查 Chrome `list_console_messages`，以及 VS Code user-data 目录的 `logs/*/window*/exthost/exthost.log`。区分扩展错误与 VS Code 自身的更新、登录或废弃 API 提示；不要把所有 stderr 都归因于连接器。
 
-## 2026-11-06 验收记录
+## 0.2.0 紧凑标签验收（2026-11-06）
+
+已移除固定引用功能。真实 VS Code + DSH Web 验证了拖选、命令更新引用、× 清除、切换文件恢复、未保存文本发送，以及清除后发送不带新上下文。发送后当前引用仍保留；浏览器控制台无 error / warn。
+
+| 实际视口宽度 | 标签高度 | 框内、不遮挡输入、无横向溢出 |
+| --- | --- | --- |
+| 1280 | 28 px | 通过 |
+| 640 | 28 px | 通过 |
+| 500（长文件名） | 28 px | 通过，文件名省略，行号和 × 保留 |
+
+本机 Chrome 的普通窗口最小宽度为 500；请求 360 得到实际 500，不能把它报告成 360 验证。
+有引用时输入卡片高 138 px，清除后回到 98 px。输入 `/` 后原生建议菜单仍在卡片上方，没有遮挡标签或正文。通过原生 File 菜单上传 `alpha.ts` 后，附件条和编辑器引用共存，布局检查继续通过（卡片高 210 px）。
+
+![输入框内的紧凑引用标签](images/compact-composer-wide.png)
+
+![窄窗口标签](images/compact-composer-narrow.png)
+
+![长文件名缩略，保留行号和移除按钮](images/compact-composer-long-name.png)
+
+模型录制基线为 2，所有选区与清除操作后仍为 2。发送 `GUI_TEST_SEND:` 后为 3，未保存选区正确进入该消息的上下文；发送后点击 ×，保持编辑器不动，再发送 `GUI_TEST_CLEAR:`，请求数为 4，新消息不附带编辑器上下文。复用以下断言：
+
+```sh
+node scripts/gui/check-recording.mjs "$GUI_RUN" --cleared
+```
+
+DSH 0.2.2 没有用于输入框顶部的普通流式列表插槽。此版注册 `conversation.input.overlay`，只在标签存在时通过公开的 `data-composer-*` 属性和 `:has()` 让其锚点参与布局；保留锚点顶部位置，使原有菜单定位继续成立。没有替换 InputBar 或附件插槽，也没有修改 DSH 源码。升级 DSH 时必须重跑布局、菜单和附件共存检查。
+
+## 0.1.x 历史验收记录（2026-11-06）
+
+以下图片与固定引用行为属于旧版，保留作历史对照；当前行为以上面的 0.2.0 验收为准。
 
 以上核心交互均已在真实界面执行通过，包括：实际拖选、两端固定操作、文件切换、清除／移除、未保存文本、网页发送、一次性消费、断开与重连。网页控制台未出现 error / warn。
 
@@ -251,8 +280,10 @@ node scripts/gui/vscode.mjs "$GUI_RUN" screenshot
 - 重启 fixture 时不要固定使用已存在的 Session ID；持久化服务会报 `SessionAlreadyExistsError`。
 - VS Code 会将 `--remote-debugging-port` 转交 Electron，CLI 的 unknown-option 提示本身不表示启动失败。实际检查 `/json/list` 中是否有测试窗口。
 - 首次运行的欢迎弹窗会拦截快捷键，Enter 也可能只是关闭弹窗。辅助脚本会等待命令面板出现；超时应先处理弹窗，再重新打开文件，不能把一次按键当作操作成功。
-- Electron 窗口在后台时，鼠标事件可能只获得焦点。脚本在输入前执行 `Page.bringToFront`；拖选后仍要核对 VS Code 状态栏的 selected 字符数和网页引用行号。
+- Electron 窗口在后台时，鼠标事件可能只获得焦点。脚本在输入前执行 `Page.bringToFront` 并等待 `document.hasFocus()`；拖选后仍要核对 VS Code 状态栏的 selected 字符数和网页引用行号。
 - VS Code 的自动缩进会改变 `Input.insertText` 后的空白与末行列号。生成配置关闭自动缩进；断言应以真实选区和录制内容为准。
+- 对 Lexical 输入区使用空字符串 `fill` 可能没有清空草稿；用真实 Ctrl+A / Backspace，并重新核对快照。
+- 调试重载若中断旧进程的清理，旧租约可能持续约 30 秒。确认没有另一个测试窗口后等待租约到期再重连，不要绕过租约校验。
 - CDP 辅助工具只支持已验证的 VS Code DOM 和可见小文件。界面升级后应检查实际标签和节点，不能把位置选择器猜测当作测试结果。
 - 验收覆盖 Linux VS Code + DSH **Web**，没有验证 DSH Desktop、Remote SSH、其他操作系统、真实模型提供方或断网恢复。排队快照与插件重载恢复另有自动化测试。
 

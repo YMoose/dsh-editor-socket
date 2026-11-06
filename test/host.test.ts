@@ -102,10 +102,11 @@ test('real DSH loop + native IPC routes + authenticated editor socket', { timeou
   const injected = events.filter(event => event.type === 'user/message' && event.data.source.kind === 'editor-socket')
   assert.equal(injected.length, 1, 'context is persisted on the normal model surface')
 
-  // Pins are one-shot, and a plugin reload recovers already submitted context from the log.
-  await plug.pin(selection('later.ts'))
+  // A plugin reload recovers already submitted context, even after live context is cleared.
+  await plug.update(selection('later.ts'))
   agent.inbox.append('next-step', message('queued before reload'))
-  assert.equal((await native('state', { sessionId: agent.id })).pinned.length, 0)
+  await plug.clear()
+  assert.equal((await native('state', { sessionId: agent.id })).live, null)
   await plug.disconnect()
   await socket.dispose()
   assert.deepEqual(await readdir(discovery), [])

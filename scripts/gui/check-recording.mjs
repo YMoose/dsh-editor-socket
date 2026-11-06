@@ -12,4 +12,14 @@ const prompt = entry.messages.findLastIndex(message => message.source?.kind === 
 const source = entry.messages[prompt + 1]
 assert.ok(prompt >= 0 && source?.source?.kind === 'editor-socket' && JSON.stringify(source).includes('GUI_UNSAVED_MARKER'), 'The submitted message must be immediately followed by its unsaved editor snapshot')
 assert.equal((await readFile(join(run.workspace, 'beta.ts'), 'utf8')).includes('GUI_UNSAVED_MARKER'), false, 'Keep beta.ts unsaved during this test')
-console.log(JSON.stringify({ passed: true, modelRequests: entries.length, unsavedSelectionCaptured: true, diskUnchanged: true }, null, 2))
+const cleared = process.argv.includes('--cleared')
+if (cleared) {
+  const afterClear = entries.findLast(entry => entry.messages.some(message => JSON.stringify(message).includes('GUI_TEST_CLEAR:')))
+  assert.ok(afterClear, 'After clicking ×, send a message beginning GUI_TEST_CLEAR: without changing the editor selection')
+  const index = afterClear.messages.findLastIndex(message => message.source?.kind === 'user' && JSON.stringify(message.content).includes('GUI_TEST_CLEAR:'))
+  assert.ok(index >= 0)
+  assert.equal(afterClear.messages[index + 1]?.source?.kind === 'editor-socket', false, 'A dismissed reference must not attach to the next message')
+}
+console.log(JSON.stringify({ passed: true, modelRequests: entries.length, unsavedSelectionCaptured: true, diskUnchanged: true,
+  ...(cleared ? { clearedReferenceOmitted: true } : {}),
+}, null, 2))

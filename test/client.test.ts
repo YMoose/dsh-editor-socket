@@ -8,14 +8,16 @@ import { zh } from '../src/client/locales.ts'
 import type { EditorState } from '../src/protocol.ts'
 
 const state: EditorState = {
-  sessionId: 'a', version: 'v1', editor: 'VS Code', connected: true, pinned: [],
+  sessionId: 'a', version: 'v1', editor: 'VS Code', connected: true,
   live: { path: '/tmp/<script>.ts', workspace: '/tmp', selection: { start: 2, end: 4 } },
 }
 test('composer renders escaped file ranges and controls, and remains empty without references', () => {
   const props = { state, pending: false, t: (key: keyof typeof zh) => zh[key], edit: () => {} }
   const html = renderToStaticMarkup(createElement(EditorReferences, props))
-  assert.match(html, /&lt;script&gt;\.ts#L2-4/)
-  assert.match(html, /固定引用/)
+  assert.match(html, /&lt;script&gt;\.ts<\/span><span[^>]*>:2-4/)
+  assert.match(html, /aria-label="清除当前引用"/)
+  assert.equal((html.match(/<button /g) ?? []).length, 1)
+  assert.doesNotMatch(html, /固定引用|<small/)
   assert.doesNotMatch(html, /<script>/)
   assert.equal(renderToStaticMarkup(createElement(EditorReferences, { ...props, state: undefined })), '')
 })

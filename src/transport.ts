@@ -11,7 +11,7 @@ export type { Registration } from './discovery.ts'
 
 export type Result = { ok: true; value: unknown } | { ok: false; error: { code: string; message: string; details: object } }
 export type Dispatch = (method: string, payload: unknown, signal: AbortSignal) => Promise<Result>
-export const METHODS = ['info', 'sessions', 'connect', 'state', 'watch', 'edit', 'update', 'pin', 'clear', 'heartbeat', 'disconnect'] as const
+export const METHODS = ['info', 'sessions', 'connect', 'state', 'watch', 'edit', 'update', 'clear', 'heartbeat', 'disconnect'] as const
 
 /** Decode exactly the Connection RPC envelope used by DSH browser and IPC clients. */
 export async function respond(dispatch: Dispatch, method: string, input: unknown, signal: AbortSignal): Promise<object> {
