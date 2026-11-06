@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-editor-socket
+      name: dsh-editor-socket

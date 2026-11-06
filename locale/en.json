@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Editor socket",
+    "description": "Follow the editor's current file and selection in a DSH conversation."
+  }
+}
