@@ -1,15 +1,13 @@
 /** DSH Host half: authenticated editor RPC and durable, prompt-correlated model context. */
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-client-connection'
-import type {} from '@deepseek-ai/dsh-working-directory'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed, UserMessage } from '@deepseek-ai/dsh-llm'
 import { appendPluginRecord } from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-session-title/types'
-import { PROTOCOL_VERSION, SocketError, record, string, normalizePath, renderContext } from './protocol.ts'
-import type { EditorSnapshot, SessionDescriptor } from './protocol.ts'
+import { PROTOCOL_VERSION, SocketError, record, string, renderContext } from './protocol.ts'
+import type { EditorSnapshot } from './protocol.ts'
+import { EditorSessions } from './sessions.ts'
 import { EditorStore } from './store.ts'
 import { resolveConfig } from './config.ts'
 import type { Config } from './config.ts'
@@ -38,37 +36,25 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   const limits = resolveConfig(config)
   const store = new EditorStore(limits)
   const captures = await ctx.sessionProjections.register(capturesProjection)
-  const active = (sessionId: string): Agent => {
-    const agent = ctx.agents.get(sessionId as SessionId)
-    if (!agent) throw new SocketError('session-unavailable', 'Open this DSH session before connecting the editor')
-    return agent
-  }
-  const directory = (agent: Agent): string => normalizePath(ctx.workingDirectory.get(agent.session))
+  const sessions = new EditorSessions(ctx)
+  const directory = sessions.directory.bind(sessions)
 
   const dispatch: Dispatch = async (method, payload, signal) => {
     try {
       signal.throwIfAborted()
       if (method === 'info') return { ok: true, value: { protocolVersion: PROTOCOL_VERSION, limits } }
       if (method === 'sessions') {
-        const sessions: SessionDescriptor[] = ctx.agents.list().map(agent => {
-          // Read DSH's current title projection, including user renames. Hosts
-          // without the title service (and new sessions) simply omit the title.
-          const title = ctx.sessionProjections.snapshot(agent.session, ['title']).values.title
-          return {
-            sessionId: agent.id, directory: directory(agent), status: agent.status,
-            ...(typeof title === 'string' && title.length > 0 ? { title } : {}),
-          }
-        })
-        return { ok: true, value: sessions }
+        return { ok: true, value: await sessions.list(signal) }
       }
       const input = record(payload)
       const sessionId = string(input.sessionId, 'sessionId', 256)
       if (method === 'connect') {
-        const agent = active(sessionId)
-        const receipt = store.connect({
+        const request = {
           sessionId, clientId: string(input.clientId, 'clientId', 256),
           editor: string(input.editor, 'editor', 80), workspace: string(input.workspace, 'workspace'),
-        }, directory(agent))
+        }
+        const agent = await sessions.connect(request, signal)
+        const receipt = store.connect(request, directory(agent))
         return { ok: true, value: receipt }
       }
       const knownDirectory = store.workspace(sessionId)

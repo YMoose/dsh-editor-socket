@@ -1,6 +1,6 @@
 {
   "name": "dsh-editor-socket",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Session-scoped editor file and selection context for DeepSeek Harness.",
   "type": "module",
   "license": "MIT",
@@ -66,10 +66,13 @@
     "build": "node scripts/build.mjs && node node_modules/typescript/bin/tsc -p tsconfig.build.json && node node_modules/typescript/bin/tsc -p tsconfig.client.build.json",
     "check": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc -p tsconfig.client.json --noEmit",
     "test": "node --import tsx --test test/*.test.ts",
+    "test:history": "npm run build && node scripts/smoke-history.mjs",
     "link:dsh": "node scripts/link-dsh.mjs",
     "prepack": "npm run check && npm test && npm run build"
   },
   "peerDependencies": {
+    "@deepseek-ai/dsh-workspace": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.1",
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-connection": "0.2.2-rc.1",
@@ -79,9 +82,13 @@
     "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-workspace": { "optional": true },
+    "@deepseek-ai/dsh-api-session-controller": { "optional": true },
     "@deepseek-ai/dsh-session-title": { "optional": true }
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-workspace": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.1",
     "@deepseek-ai/dsh-session-title": "0.2.2-rc.1",
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-agent": "0.2.2-rc.1",

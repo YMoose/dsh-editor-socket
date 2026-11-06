@@ -46,7 +46,7 @@ Valid business errors use HTTP 200 with `result.ok: false`.
 | Method | Payload | Result |
 | --- | --- | --- |
 | `info` | `{}` | `{protocolVersion, limits}` |
-| `sessions` | `{}` | Active `{sessionId, directory, status, title?}` entries |
+| `sessions` | `{}` | Ordinary `{sessionId, directory, status, title?}` entries, including persisted sessions |
 | `connect` | `{sessionId, clientId, editor, workspace}` | `{connectionId, heartbeatMs, state}` |
 | `state` | `{sessionId}` | Current editor state |
 | `watch` | `{sessionId, version}` | State immediately if changed, otherwise on change or after 25 s |
@@ -57,10 +57,22 @@ Valid business errors use HTTP 200 with `result.ok: false`.
 | `disconnect` | Mutation | State; release lease, clear live, retain pins |
 | `edit` | `{sessionId, version, action, id?}` | State; composer action `pin`, `clear`, `remove`, or `reset` |
 
-`title` is read from DSH's current title projection on each discovery request,
-so a subsequent request reflects automatic titles and user renames. It is omitted
-before a title exists or when the host does not mount the title service; editors
-should fall back to the session ID.
+`sessions` uses DSH's native Session list when `sessionController` is mounted.
+Listing does not activate Agents. Persisted entries have `status: "unloaded"`;
+Subagent-owned entries, entries without a working directory, archived entries
+(when the Workspace registry is available), and unloaded blank placeholders are
+excluded. Live blank sessions remain connectable before their first prompt.
+Minimal hosts without that API retain live-Agent discovery.
+
+`title` comes from the current projection for a loaded session, or DSH's persisted
+projection hints for an unloaded session. It is omitted before a title exists or
+when no title/cache is available; editors should fall back to the session ID.
+
+`connect` rechecks the selected entry and workspace before using DSH's native
+Session resolver. Only the selected session is resumed; its effective directory
+is checked again before granting a lease. Removed or unresumable sessions return
+`session-unavailable`, and cross-workspace requests return `workspace-mismatch`.
+Connecting does not submit a user message or create a replacement conversation.
 
 Mutation fields are `{sessionId, connectionId, sequence}`. Sequence starts at 1
 and increases for every mutation, including heartbeat. Old/duplicate sequences
