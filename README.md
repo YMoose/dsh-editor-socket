@@ -74,7 +74,7 @@ for (const socket of await discoverSockets()) {
 可在 profile 的 `cordis.patch.yml` 中覆盖插件配置：
 
 ```yaml
-- select: dsh-editor-socket
+- id: dsh-editor-socket
   config:
     maxSelectionBytes: 32768
     maxPinned: 8
