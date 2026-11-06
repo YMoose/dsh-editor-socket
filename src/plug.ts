@@ -42,21 +42,21 @@ export class EditorPlug {
     if (this.receipt || this.connecting || this.closing) throw new Error('Disconnect this plug before reconnecting')
     this.connecting = true
     try {
-    const info = record(await this.call('info', {}))
-    if (info.protocolVersion !== PROTOCOL_VERSION) throw new Error('Unsupported editor socket protocol')
-    const receipt = await this.call('connect', request) as ConnectionReceipt
-    this.receipt = receipt
-    this.sequence = 0
-    this.stopped = false
-    this.error = undefined
-    this.timer = setInterval(() => {
-      void this.mutate('heartbeat').catch(error => {
-        this.error = error instanceof Error ? error : new Error(String(error))
-        if (this.timer) clearInterval(this.timer)
-      })
-    }, receipt.heartbeatMs)
-    this.timer.unref?.()
-    return receipt
+      const info = record(await this.call('info', {}))
+      if (info.protocolVersion !== PROTOCOL_VERSION) throw new Error('Unsupported editor socket protocol')
+      const receipt = await this.call('connect', request) as ConnectionReceipt
+      this.receipt = receipt
+      this.sequence = 0
+      this.stopped = false
+      this.error = undefined
+      this.timer = setInterval(() => {
+        void this.mutate('heartbeat').catch(error => {
+          this.error = error instanceof Error ? error : new Error(String(error))
+          if (this.timer) clearInterval(this.timer)
+        })
+      }, receipt.heartbeatMs)
+      this.timer.unref?.()
+      return receipt
     } finally { this.connecting = false }
   }
 
