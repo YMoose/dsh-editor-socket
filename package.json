@@ -5,30 +5,66 @@
   "type": "module",
   "license": "MIT",
   "author": "YMOOSE <42179813+YMoose@users.noreply.github.com>",
-  "repository": { "type": "git", "url": "git+https://github.com/YMoose/dsh-editor-socket.git" },
-  "engines": { "node": ">=24.9.0", "dsh": "0.2.2-rc.1" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YMoose/dsh-editor-socket.git"
+  },
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.1"
+  },
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
   "exports": {
-    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
-    "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" },
-    "./protocol": { "types": "./lib/types/protocol.d.ts", "default": "./lib/protocol.js" },
-    "./plug": { "types": "./lib/types/plug.d.ts", "default": "./lib/plug.js" },
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./protocol": {
+      "types": "./lib/types/protocol.d.ts",
+      "default": "./lib/protocol.js"
+    },
+    "./plug": {
+      "types": "./lib/types/plug.d.ts",
+      "default": "./lib/plug.js"
+    },
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./locale/*.json": "./locale/*.json"
+    "./locale/*.json": "./locale/*.json",
+    "./discovery": {
+      "types": "./lib/types/discovery.d.ts",
+      "default": "./lib/discovery.js"
+    }
   },
-  "files": ["lib", "locale", "cordis.patch.yml", "README.md", "docs/protocol.md", "LICENSE"],
+  "files": [
+    "lib",
+    "locale",
+    "cordis.patch.yml",
+    "README.md",
+    "docs/protocol.md",
+    "LICENSE"
+  ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
-      "inject": ["@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-client-ui-renderer", "@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-locale"]
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-locale"
+      ]
     }
   },
   "scripts": {
-    "build": "node scripts/build.mjs && node node_modules/typescript/bin/tsc -p tsconfig.build.json",
-    "check": "node node_modules/typescript/bin/tsc --noEmit",
+    "build": "node scripts/build.mjs && node node_modules/typescript/bin/tsc -p tsconfig.build.json && node node_modules/typescript/bin/tsc -p tsconfig.client.build.json",
+    "check": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc -p tsconfig.client.json --noEmit",
     "test": "node --import tsx --test test/*.test.ts",
     "link:dsh": "node scripts/link-dsh.mjs",
     "prepack": "npm run check && npm test && npm run build"
@@ -37,7 +73,9 @@
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-connection": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-llm": "0.2.2-rc.1"
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
@@ -49,6 +87,7 @@
     "@deepseek-ai/dsh-client-ui-slots": "0.2.2-rc.1",
     "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
     "@deepseek-ai/dsh-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-working-directory": "0.2.2-rc.1",
     "@deepseek-ai/dsh-agent-loop-testkit": "0.2.2-rc.1",
     "@types/node": "22.20.1",
     "@types/react": "18.3.31",
@@ -57,6 +96,11 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "tsx": "4.23.13",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-credentials-local": "0.2.2-rc.1"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
   }
 }

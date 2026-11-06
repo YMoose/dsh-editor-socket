@@ -13,5 +13,6 @@
     "rewriteRelativeImportExtensions": true,
     "types": ["node", "react", "react-dom"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "exclude": ["src/client", "test/client.test.ts"]
 }

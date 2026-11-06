@@ -29,7 +29,7 @@ for (const group of await readdir(join(root, 'packages'), { withFileTypes: true 
 for (const pkg of await readdir(join(root, 'vendor'), { withFileTypes: true })) {
   if (pkg.isDirectory()) await packageAt(join(root, 'vendor', pkg.name))
 }
-for (const name of ['typescript', 'tsx', 'react', 'react-dom', '@types/node', '@types/react', '@types/react-dom']) {
+for (const name of ['typescript', 'tsx', 'zod', 'react', 'react-dom', '@types/node', '@types/react', '@types/react-dom']) {
   let manifest
   try { manifest = require.resolve(`${name}/package.json`) }
   catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; manifest = clientRequire.resolve(`${name}/package.json`) }

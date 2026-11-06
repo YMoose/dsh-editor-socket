@@ -4,7 +4,7 @@ import { readFile, mkdir } from 'node:fs/promises'
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 await mkdir('lib', { recursive: true })
 await build({
-  entryPoints: ['src/index.ts', 'src/protocol.ts', 'src/plug.ts'],
+  entryPoints: ['src/index.ts', 'src/protocol.ts', 'src/plug.ts', 'src/discovery.ts'],
   bundle: true, platform: 'node', format: 'esm', target: 'node24',
   packages: 'external', outdir: 'lib',
 })

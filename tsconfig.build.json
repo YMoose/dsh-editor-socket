@@ -2,5 +2,5 @@
   "extends": "./tsconfig.json",
   "compilerOptions": { "declaration": true, "emitDeclarationOnly": true, "rootDir": "src", "outDir": "lib/types" },
   "include": ["src"],
-  "exclude": ["test"]
+  "exclude": ["test", "src/client"]
 }
