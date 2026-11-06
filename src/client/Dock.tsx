@@ -16,6 +16,13 @@ type Props = PropsRuntime<'conversation.input.dock'> & InjectFace<DockInjected> 
 const row: CSSProperties = { display: 'flex', gap: '0.5em', alignItems: 'center', flexWrap: 'wrap' }
 const chip: CSSProperties = { border: '1px solid color-mix(in srgb, currentColor 20%, transparent)', borderRadius: '6px', padding: '0.25em 0.5em', maxWidth: '100%' }
 const button: CSSProperties = { color: 'inherit', background: 'transparent', border: '1px solid color-mix(in srgb, currentColor 20%, transparent)', borderRadius: '4px', padding: '0.15em 0.4em', cursor: 'pointer' }
+// Dock slots sit outside InputBar's centered wrapper. Share its width axis explicitly.
+const dock: CSSProperties = {
+  boxSizing: 'border-box', flex: 'none',
+  width: 'calc(100% - 2 * var(--dsh-composer-side-clearance, 16px))',
+  maxWidth: 'var(--dsh-composer-card-max-width, 952px)',
+  margin: '0 auto', padding: '0 14px', fontSize: '0.85em',
+}
 
 /** Presentation can also be rendered independently for a client smoke test. */
 export function EditorReferences({ state, pending, error, t, edit }: {
@@ -25,7 +32,7 @@ export function EditorReferences({ state, pending, error, t, edit }: {
 }) {
   if (!error && !state?.live && !state?.pinned.length) return null
   const reference = (snapshot: EditorSnapshot) => <code style={{ overflowWrap: 'anywhere' }} title={snapshot.path}>{label(snapshot)}</code>
-  return <section aria-label={t('title')} style={{ padding: '0.5em 0', fontSize: '0.85em' }}>
+  return <section aria-label={t('title')} style={dock}>
     {error && <div role="status">{error}</div>}
     <div style={row}>
       {state?.live && <div style={{ ...row, ...chip }}>
@@ -39,7 +46,7 @@ export function EditorReferences({ state, pending, error, t, edit }: {
       </div>)}
       {!!state?.pinned.length && <button type="button" style={button} disabled={pending} onClick={() => edit('reset')}>{t('reset')}</button>}
     </div>
-    {(state?.live || !!state?.pinned.length) && <small>{t('hint')}</small>}
+    {(state?.live || !!state?.pinned.length) && <small style={{ display: 'block', marginTop: '4px', color: 'var(--dsw-alias-label-secondary, inherit)' }}>{t('hint')}</small>}
   </section>
 }
 
