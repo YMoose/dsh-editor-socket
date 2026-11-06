@@ -104,4 +104,10 @@ npm run build
 
 测试包含真实 dsh AgentLoop / Connection 服务、录制型模型适配器、本机 HTTP listener、队列快照与插件重载恢复，以及输入区渲染和订阅取消。测试不访问模型 API、不修改已有 dsh profile；运行环境需要允许本机回环监听。Desktop 覆盖的是原生 IPC 共用的 Fetch 路由，不等同于 Electron 界面的人工验收。
 
-后续作为 `vsc-agents-connector` 的 Git submodule 使用，协议和 dsh 插件实现继续在此仓库独立维护。
+本仓库已作为 `vsc-agents-connector` 的 `vendor/dsh-editor-socket` submodule 接入。安装连接器 VSIX 后，使用 **VSC Agents: Connect to Local Service** 选择对应 DSH 会话即可开始跟随。
+
+两个仓库都构建后，可以验证编译后的 VS Code adapter 与真实 DSH AgentLoop 的完整通信链路：
+
+```sh
+node scripts/smoke-vscode.mjs ../vsc-agents-connector/out/src/agents/dsh/index.js
+```
