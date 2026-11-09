@@ -1,6 +1,6 @@
 {
   "name": "dsh-editor-socket",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Session-scoped editor file and selection context for DeepSeek Harness.",
   "type": "module",
   "license": "MIT",

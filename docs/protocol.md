@@ -1,7 +1,11 @@
-# Editor socket protocol v2
+# Editor socket protocol v3
 
-Version 2 removes `pin`, pinned state, `maxPinned`, and the `pin`/`remove`/`reset`
-composer actions. Upgrade both socket and editor SDK together. Discovery filters
+Version 3 changes the connection unit from session to working directory. `connect`
+no longer names a session and never resumes one; leases, live references, state
+and mutations are keyed by `workspace`. `state`/`watch`/`edit` still accept a
+`sessionId` because the dsh composer knows only its session; the host resolves it
+to the session's current working directory. `maxPinned`-era v1 pin operations
+remain gone. Upgrade both socket and editor SDK together. Discovery filters
 incompatible versions; connect also checks the version before taking a lease.
 
 ## Transport and discovery
@@ -10,7 +14,7 @@ Each activation binds an ephemeral `http://127.0.0.1:<port>` listener and writes
 `<instanceId>.json` in the discovery directory, mode `0600`:
 
 ```json
-{"protocolVersion":2,"instanceId":"uuid","pid":1234,"url":"http://127.0.0.1:12345","token":"64-hex-characters"}
+{"protocolVersion":3,"instanceId":"uuid","pid":1234,"url":"http://127.0.0.1:12345","token":"64-hex-characters"}
 ```
 
 Use the exported `discoverSockets()` helper, which checks file ownership, permissions,
@@ -50,9 +54,9 @@ Valid business errors use HTTP 200 with `result.ok: false`.
 | Method | Payload | Result |
 | --- | --- | --- |
 | `info` | `{}` | `{protocolVersion, limits}` |
-| `sessions` | `{}` | Ordinary `{sessionId, directory, status, title?}` entries, including persisted sessions |
-| `connect` | `{sessionId, clientId, editor, workspace}` | `{connectionId, heartbeatMs, state}` |
-| `state` | `{sessionId}` | Current editor state |
+| `sessions` | `{}` | `{sessionId, directory, status, title?}` entries, including persisted sessions |
+| `connect` | `{clientId, editor, workspace}` | `{connectionId, heartbeatMs, state}` |
+| `state` | `{sessionId}` | Editor state of that session's working directory |
 | `watch` | `{sessionId, version}` | State immediately if changed, otherwise on change or after 25 s |
 | `update` | Mutation + `snapshot` | State; replace live reference |
 | `clear` | Mutation | State; clear live |
@@ -61,36 +65,48 @@ Valid business errors use HTTP 200 with `result.ok: false`.
 | `edit` | `{sessionId, version, action}` | State; composer action `clear` |
 
 `sessions` uses DSH's native Session list when `sessionController` is mounted.
-Listing does not activate Agents. Persisted entries have `status: "unloaded"`;
+Listing is read-only display data for editors: it never activates Agents, and
+connection no longer consumes it. Persisted entries have `status: "unloaded"`;
 Subagent-owned entries, entries without a working directory, archived entries
 (when the Workspace registry is available), and unloaded blank placeholders are
-excluded. Live blank sessions remain connectable before their first prompt.
-Minimal hosts without that API retain live-Agent discovery.
-
+excluded. Live blank sessions remain listed so users can attach before their
+first prompt. Minimal hosts without that API retain live-Agent discovery.
 `title` comes from the current projection for a loaded session, or DSH's persisted
 projection hints for an unloaded session. It is omitted before a title exists or
 when no title/cache is available; editors should fall back to the session ID.
 
-`connect` rechecks the selected entry and workspace before using DSH's native
-Session resolver. Only the selected session is resumed; its effective directory
-is checked again before granting a lease. Removed or unresumable sessions return
-`session-unavailable`, and cross-workspace requests return `workspace-mismatch`.
-Connecting does not submit a user message or create a replacement conversation.
+`connect` takes only `{clientId, editor, workspace}`. The workspace must be an
+absolute host path that exists as a directory when the editor connects, checked
+before a lease is granted; anything else returns `workspace-mismatch`. Connecting
+submits no user message, resumes no session, and creates no replacement
+conversation. Sessions in the directory — loaded later by the user, or created
+after the connection — are covered automatically because capture resolves each
+session's live working directory at message time.
 
-Mutation fields are `{sessionId, connectionId, sequence}`. Sequence starts at 1
-and increases for every mutation, including heartbeat. Old/duplicate sequences
-are ignored and return current state; invalid commands do not consume sequence
-numbers. Serialize operations so clear cannot overtake update. Do not keep
-mutating after a failed connection; reconnect explicitly.
+Editor-side mutations (`update`, `clear`, `heartbeat`, `disconnect`) carry
+`{workspace, connectionId, sequence}`. Sequence starts at 1 and increases for
+every mutation, including heartbeat. Old/duplicate sequences are ignored and
+return current state; invalid commands do not consume sequence numbers. Serialize
+operations so clear cannot overtake update. Do not keep mutating after a failed
+connection; reconnect explicitly.
 
-One editor window leases a session at a time. Reconnecting with the same stable
+Composer-side calls (`state`, `watch`, `edit`) carry `sessionId`. The host maps
+the session to its current working directory, so a session that changes
+directories mid-flight simply observes another directory's state. Unknown or
+unloaded sessions report an empty state with `connected: false` and wait out the
+watch window instead of spinning.
+
+One editor window leases a workspace at a time. Reconnecting with the same stable
 `clientId` rotates the connection ID and clears live state; other windows receive
 `busy`. Heartbeat every `heartbeatMs` (default 10 s); expiration (default 30 s)
-clears live state. A fresh activation has no live leases or references.
+clears live state. Session creation and disposal do not affect the lease. A fresh
+activation has no live leases or references.
 
-`workspace` must exactly match the session directory after lexical path normalization.
-Files must be within that directory. These are host filesystem paths, not URIs;
-symlinks are not resolved and files are not read. No cross-host path mapping exists.
+`workspace` must be an absolute host path and is matched lexically after
+normalization (backslashes, `.` and `..`, trailing slashes, Windows drive casing).
+Files must be within that directory. Symlinks are not resolved and files are not
+read; the directory itself is only checked for existence and type at connect
+time. No cross-host path mapping exists.
 
 ```json
 {
@@ -103,17 +119,23 @@ symlinks are not resolved and files are not read. No cross-host path mapping exi
 Lines are 1-based and inclusive. Selection may be omitted. Text is optional and
 limited to 32768 UTF-8 bytes by default; a file reference does not include its contents.
 
-State is `{sessionId, version, connected, editor, live}`. `live` is a snapshot
-or null. Version is opaque and includes the server
-instance. Composer edits use compare-and-set; a stale version returns `conflict`.
-Watch calls must be canceled on unmount/session switch. The default watcher limit is 128.
+State is `{workspace, version, connected, editor, live}`. `workspace` is the
+observed directory, empty for sessions without one. `live` is a snapshot or null.
+Version is opaque and includes the server instance. Composer edits use
+compare-and-set; a stale version returns `conflict`. Watch calls must be canceled
+on unmount/session switch. The default watcher limit is 128.
 
 ## Prompt semantics
 
-Only ordinary `source.kind === 'user'` inbox insertions capture context. Live updates
-and clears never create prompts or invoke the model. Each accepted user message
-freezes the current live reference; live state remains available for later messages.
-Clearing removes it from future captures until the editor sends another update. Captures are logged as ignorable plugin records and
+Only ordinary `source.kind === 'user'` inbox insertions capture context, in
+whatever DSH session they arrive. At that moment the host resolves the session's
+current working directory and freezes that directory's live reference into the
+session's own log; two sessions in one directory each freeze their own copy when
+their users send. Live updates and clears never create prompts or invoke the
+model. Subagent child sessions inherit their parent's directory and therefore
+also capture when they receive user-kind input; discovery still hides them from
+editor pickers. Clearing removes the reference from future captures until the
+editor sends another update. Captures are logged as ignorable plugin records and
 reconstructed by a host-only session projection. Discarded inbox messages release
 their captures; plugin reload recovers queued captures.
 
@@ -122,6 +144,8 @@ user-role context after the corresponding user message. Values are rendered as J
 reference data, explicitly not instructions. Historical context remains in normal
 DSH conversation history after sending, even when the current editor state is cleared.
 
-Useful business errors: `invalid`, `workspace-mismatch`, `session-unavailable`,
-`busy`, `disconnected`, `capacity`, `selection-too-large`, `conflict`,
-`closed`, `internal`, all prefixed with `editor-socket/`.
+Useful business errors: `invalid`, `workspace-mismatch`, `busy`, `disconnected`,
+`capacity`, `selection-too-large`, `conflict`, `closed`, `internal`, all prefixed
+with `editor-socket/`. v2's `session-unavailable` is gone: v3 `connect` never
+targets a session, and composer calls on a vanished session simply report an
+empty state.

@@ -42,14 +42,16 @@ try {
   ctx.llm.registerAdapter(['mock'], recorder)
   const harness = await mountAgentLoopTestHarness(ctx)
   const agent = await harness.create(SessionId('vscode-smoke'), { provider: 'mock', model: 'mock' }, { cwd: dir })
+  const sibling = await harness.create(SessionId('vscode-smoke-sibling'), { provider: 'mock', model: 'mock' }, { cwd: dir })
   await ctx.plugin(SessionTitleService, { fallbackMaxWords: 8, fallbackMaxBytes: 64, maxTitleBytes: 256 })
   ctx.sessionTitle.rename(agent.session, 'VS Code 会话标题验证')
   adapter = createDshAdapter({ discover: () => discoverSockets(discoveryDirectory) })
   const groups = await adapter.discoverSessions(dir)
   assert.equal(groups.length, 1)
-  assert.equal(groups[0].sessions[0].title, 'VS Code 会话标题验证')
+  assert.equal(groups[0].sessions.length, 2)
+  assert.ok(groups[0].sessions.some(item => item.title === 'VS Code 会话标题验证'))
   ctx.sessionTitle.rename(agent.session, '重命名后的 VS Code 会话')
-  assert.equal((await adapter.discoverSessions(dir))[0].sessions[0].title, '重命名后的 VS Code 会话')
+  assert.ok((await adapter.discoverSessions(dir))[0].sessions.some(item => item.title === '重命名后的 VS Code 会话'))
   session = { agentId: 'dsh', sessionID: agent.id, url: groups[0].url, header: groups[0].header, directory: dir }
   await adapter.connect(session)
   await adapter.liveFollow.update(session, {
@@ -61,7 +63,12 @@ try {
   await agent.whenIdle()
   assert.equal(recorder.requests.length, 1)
   assert.match(JSON.stringify(recorder.requests[0].messages), /UNSAVED_VSCODE_SELECTION/)
-  console.log('PASS: compiled VS Code adapter → local socket → real DSH AgentLoop → captured model context')
+  // The directory lease serves every session in it without a second editor connection.
+  sibling.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Same directory, same reference' }] }))
+  await sibling.whenIdle()
+  assert.equal(recorder.requests.length, 2)
+  assert.match(JSON.stringify(recorder.requests[1].messages), /UNSAVED_VSCODE_SELECTION/)
+  console.log('PASS: compiled VS Code adapter → workspace-scoped socket → real DSH AgentLoop → shared model context')
 } finally {
   if (session) await adapter.disconnect(session).catch(() => {})
   await ctx.fiber.dispose()

@@ -1,13 +1,12 @@
-/** Discover persisted sessions without activating them; resume only an explicit connection target. */
+/** Discover persisted sessions without activating them; connection is directory-scoped and resumes nothing. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import type {} from '@deepseek-ai/dsh-workspace'
 import type {} from '@deepseek-ai/dsh-session-title/types'
-import type { SessionId } from '@deepseek-ai/dsh-session'
-import { normalizePath, SocketError } from './protocol.ts'
-import type { ConnectRequest, SessionDescriptor } from './protocol.ts'
+import { normalizePath } from './protocol.ts'
+import type { SessionDescriptor } from './protocol.ts'
 
 export class EditorSessions {
   constructor(private readonly ctx: Context) {}
@@ -23,12 +22,12 @@ export class EditorSessions {
     signal.throwIfAborted()
     const archived = new Set(this.ctx.get('workspaceRegistry')?.archivedSessionIds ?? [])
     return items.flatMap(item => {
-      // DSH owns subagent delivery; its ordinary-session resolver cannot resume these.
+      // Discovery is display-only; subagent rows are not editor targets.
       if (item.origin === 'subagent' || !item.cwd || archived.has(item.sessionId)) return []
       const agent = this.ctx.agents.get(item.sessionId)
       if (agent) return [this.live(agent)]
       // Old unused New Session placeholders are hidden by DSH's sidebar too.
-      // Keep live blanks connectable so users can attach before their first prompt.
+      // Keep live blanks listed so users can attach before their first prompt.
       if (item.blank) return []
       const title = item.projections?.values.title
       const directory = item.projections?.values.workingDirectory ?? item.cwd
@@ -36,28 +35,6 @@ export class EditorSessions {
         ...(typeof title === 'string' && title.length > 0 ? { title } : {}),
       }]
     })
-  }
-
-  async connect(request: ConnectRequest, signal: AbortSignal): Promise<Agent> {
-    const selected = (await this.list(signal)).find(item => item.sessionId === request.sessionId)
-    if (!selected) throw new SocketError('session-unavailable', 'This DSH session is no longer available; refresh the session list')
-    const workspace = normalizePath(request.workspace)
-    if (selected.directory !== workspace) throw new SocketError('workspace-mismatch', 'Editor and session directories must match exactly')
-    signal.throwIfAborted()
-    const controller = this.ctx.get('sessionController')
-    let agent: Agent | undefined
-    if (controller) {
-      const result = await controller.resolveAgent(request.sessionId as SessionId)
-      if ('error' in result) throw new SocketError('session-unavailable', result.error.message)
-      agent = result.agent
-    } else {
-      agent = this.ctx.agents.get(request.sessionId as SessionId)
-    }
-    signal.throwIfAborted()
-    if (!agent) throw new SocketError('session-unavailable', 'Open this DSH session before connecting the editor')
-    // The working directory may have changed since discovery or during resume.
-    if (this.directory(agent) !== workspace) throw new SocketError('workspace-mismatch', 'Editor and session directories must match exactly')
-    return agent
   }
 
   private live(agent: Agent): SessionDescriptor {

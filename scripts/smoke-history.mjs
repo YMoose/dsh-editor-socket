@@ -63,7 +63,7 @@ try {
   await runPhase('seed')
   await runPhase('verify')
   await rm(root, { recursive: true, force: true })
-  console.log('PASS: real DSH restart → six persisted sessions → resume selected session → captured model context')
+  console.log('PASS: real DSH restart → six persisted sessions → workspace connection loads nothing → opened session captures editor context')
 } catch (error) {
   console.error(`History regression failed. Isolated artifacts: ${root}`)
   throw error

@@ -8,7 +8,7 @@ import { zh } from '../src/client/locales.ts'
 import type { EditorState } from '../src/protocol.ts'
 
 const state: EditorState = {
-  sessionId: 'a', version: 'v1', editor: 'VS Code', connected: true,
+  workspace: '/tmp', version: 'v1', editor: 'VS Code', connected: true,
   live: { path: '/tmp/<script>.ts', workspace: '/tmp', selection: { start: 2, end: 4 } },
 }
 test('composer renders escaped file ranges and controls, and remains empty without references', () => {

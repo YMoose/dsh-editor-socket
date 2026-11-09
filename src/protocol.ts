@@ -1,6 +1,6 @@
 /** Editor-neutral wire contract. All line numbers are one-based and inclusive. */
 export const CHANNEL = '/editor-socket'
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 
 export interface EditorSnapshot {
   /** Path in the DSH host's filesystem namespace. The socket never reads this file. */
@@ -10,7 +10,8 @@ export interface EditorSnapshot {
 }
 
 export interface EditorState {
-  readonly sessionId: string
+  /** Working directory this state belongs to; empty when the session has no directory. */
+  readonly workspace: string
   /** Opaque revision, including the server instance. Suitable for long polling and optimistic edits. */
   readonly version: string
   readonly connected: boolean
@@ -26,10 +27,10 @@ export interface SessionDescriptor {
 }
 
 export interface ConnectRequest {
-  readonly sessionId: string
   /** Stable per editor window; generate once and retain across reconnects. */
   readonly clientId: string
   readonly editor: string
+  /** Working directory to follow. Every DSH session in this directory shares the connection. */
   readonly workspace: string
 }
 
@@ -40,7 +41,8 @@ export interface ConnectionReceipt {
 }
 
 export interface Mutation {
-  readonly sessionId: string
+  /** The connected working directory this mutation belongs to. */
+  readonly workspace: string
   readonly connectionId: string
   /** Strictly increasing per connection, including heartbeat and disconnect. */
   readonly sequence: number
@@ -48,7 +50,7 @@ export interface Mutation {
 
 export interface ProtocolLimits {
   readonly maxSelectionBytes: number
-  readonly maxSessions: number
+  readonly maxWorkspaces: number
   readonly leaseMs: number
   readonly watchMs: number
   readonly maxWatchers: number

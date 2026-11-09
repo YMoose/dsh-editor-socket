@@ -1,11 +1,12 @@
 /** DSH Host half: authenticated editor RPC and durable, prompt-correlated model context. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-connection'
+import { stat } from 'node:fs/promises'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed, UserMessage } from '@deepseek-ai/dsh-llm'
 import { appendPluginRecord } from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import { PROTOCOL_VERSION, SocketError, record, string, renderContext } from './protocol.ts'
+import { PROTOCOL_VERSION, SocketError, record, string, normalizePath, renderContext } from './protocol.ts'
 import type { EditorSnapshot } from './protocol.ts'
 import { EditorSessions } from './sessions.ts'
 import { EditorStore } from './store.ts'
@@ -32,12 +33,29 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 
+/** Fail loudly when an editor connects to a directory this host cannot see. */
+async function assertDirectory(workspace: string): Promise<void> {
+  try {
+    if (!(await stat(workspace)).isDirectory()) throw new SocketError('workspace-mismatch', 'The editor workspace must be a directory on the DSH host')
+  } catch (error) {
+    if (error instanceof SocketError) throw error
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT' || code === 'ENOTDIR') throw new SocketError('workspace-mismatch', 'The editor workspace does not exist on the DSH host')
+    throw error
+  }
+}
+
 export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   const limits = resolveConfig(config)
   const store = new EditorStore(limits)
   const captures = await ctx.sessionProjections.register(capturesProjection)
   const sessions = new EditorSessions(ctx)
   const directory = sessions.directory.bind(sessions)
+  /** Resolve a composer session to its current working directory, if it is loaded. */
+  const directoryOf = (sessionId: string): string | undefined => {
+    const agent = ctx.agents.get(sessionId as SessionId)
+    return agent ? directory(agent) : undefined
+  }
 
   const dispatch: Dispatch = async (method, payload, signal) => {
     try {
@@ -47,23 +65,21 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
         return { ok: true, value: await sessions.list(signal) }
       }
       const input = record(payload)
-      const sessionId = string(input.sessionId, 'sessionId', 256)
       if (method === 'connect') {
         const request = {
-          sessionId, clientId: string(input.clientId, 'clientId', 256),
-          editor: string(input.editor, 'editor', 80), workspace: string(input.workspace, 'workspace'),
+          clientId: string(input.clientId, 'clientId', 256),
+          editor: string(input.editor, 'editor', 80),
+          workspace: normalizePath(string(input.workspace, 'workspace')),
         }
-        const agent = await sessions.connect(request, signal)
-        const receipt = store.connect(request, directory(agent))
-        return { ok: true, value: receipt }
+        await assertDirectory(request.workspace)
+        signal.throwIfAborted()
+        return { ok: true, value: store.connect(request) }
       }
-      const knownDirectory = store.workspace(sessionId)
-      const agent = ctx.agents.get(sessionId as SessionId)
-      if (knownDirectory && (!agent || directory(agent) !== knownDirectory)) store.remove(sessionId)
-      if (method === 'state') return { ok: true, value: store.state(sessionId) }
-      if (method === 'watch') return { ok: true, value: await store.watch(sessionId, string(input.version, 'version', 256), signal) }
-      if (method === 'edit') return { ok: true, value: store.edit(input) }
-      if (!agent) throw new SocketError('session-unavailable', 'Open this DSH session before connecting the editor')
+      // Composer-side calls know only their session; the host maps it to its live directory.
+      const workspace = directoryOf(string(input.sessionId, 'sessionId', 256))
+      if (method === 'state') return { ok: true, value: store.state(workspace) }
+      if (method === 'watch') return { ok: true, value: await store.watch(workspace, string(input.version, 'version', 256), signal) }
+      if (method === 'edit') return { ok: true, value: store.edit(workspace, input) }
       return { ok: true, value: store.mutate(method, input) }
     } catch (error) {
       if (signal.aborted) throw error
@@ -89,10 +105,11 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     })
   }
 
+  // The lease is keyed by working directory, so every session in it — including
+  // ones created after the editor connected — captures the same live reference.
   ctx.on('agent/inbox/inserted', ({ agent, message }) => {
     if (message.source.kind !== 'user') return
-    if (store.workspace(agent.id) !== directory(agent)) { store.remove(agent.id); return }
-    store.capture(agent.id, snapshots => {
+    store.capture(directory(agent), snapshots => {
       appendPluginRecord(agent.session, 'plugin:editor-socket/capture', { messageId: message.id, snapshots })
     })
   })
@@ -113,7 +130,6 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     }
     return { ...decision, messages: output }
   }, { prepend: true })
-  ctx.on('session/disposed', session => { store.remove(session.id) })
 
   ctx.effect(() => {
     const timer = setInterval(() => { store.expire() }, Math.min(limits.leaseMs / 3, 1000))

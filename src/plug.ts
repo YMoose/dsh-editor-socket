@@ -80,7 +80,7 @@ export class EditorPlug {
     if (!receipt || this.closing || (this.stopped && method !== 'disconnect')) return Promise.reject(new Error('Editor plug is not connected'))
     // Serialization prevents a slow update overtaking a clear or disconnect.
     const sequence = ++this.sequence
-    const payload = structuredClone({ sessionId: receipt.state.sessionId, connectionId: receipt.connectionId, sequence, ...extra })
+    const payload = structuredClone({ workspace: receipt.state.workspace, connectionId: receipt.connectionId, sequence, ...extra })
     const run = this.tail.then(async () => {
       if (this.error && method !== 'disconnect') throw this.error
       try { return await this.call(method, payload) as EditorState }

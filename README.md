@@ -2,22 +2,23 @@
 
 让 DeepSeek Harness（dsh）的现有输入区接收编辑器当前文件和选区。点击或划选只同步上下文；用户在 dsh 发送消息时，上下文才随消息进入 agent。
 
-`dsh-editor-socket` 是 dsh 侧的 **socket**；VS Code 的 `vsc-agents-connector` DSH adapter 是 **plug**。一个 VS Code 扩展可以同时提供 OpenCode、DSH 等多个 agent 的连接入口，每次连接一个会话。
+`dsh-editor-socket` 是 dsh 侧的 **socket**；VS Code 的 `vsc-agents-connector` DSH adapter 是 **plug**。一个 VS Code 扩展可以同时提供 OpenCode、DSH 等多个 agent 的连接入口，每次连接一个工作目录。
 
 ## 功能
 
+- **连接单位是工作目录（cwd），不是会话。** 编辑器对某个目录连接一次，该目录下的全部 dsh 会话——已打开的、历史未加载的、以及连接之后新建的——共享同一份跟随上下文；在该目录任一会话里发消息，都会冻结当时的编辑器引用。
+- 连接与发现都不激活会话。历史会话在用户于 dsh 界面打开时才恢复；编辑器连接目录、列出会话均为只读操作，不会启动任何模型任务。
 - 跟随当前文件和选区，在输入框内显示紧凑的文件名与行号标签，悬停查看完整路径；可附带未保存的选中文本。
 - 标签只提供 × 清除按钮；清除后不附带上下文，切换文件或选区后恢复跟随。
 - 发送时冻结上下文。排队期间继续切换文件，不会改写已提交消息的引用。
-- 会话隔离、单编辑器租约、递增序号；断线约 30 秒后清理跟随引用。
+- 目录级单编辑器租约、递增序号；断线约 30 秒后清理跟随引用。同目录的会话生灭不影响租约。
 - 已提交的快照进入 dsh 会话日志，支持插件重载后的待处理消息恢复。实时跟随只保存在内存中。
 - dsh 输入区使用原有 HTTP / Desktop IPC 通道；编辑器使用仅绑定 `127.0.0.1` 的独立接口。
-- 会话发现返回 dsh 的当前标题（含用户重命名），没有标题时由编辑器回退显示会话 ID。
-- Web / Desktop 会话发现包含尚未加载的历史会话；选中时通过 dsh 的原生接口恢复该会话，展开列表不会批量启动 agent。
+- 会话发现返回 dsh 的当前标题（含用户重命名），没有标题时由编辑器回退显示会话 ID；Web / Desktop 发现包含尚未加载的历史会话。
 
 目前验证的版本为 **dsh 0.2.2-rc.1、Node.js 26.4.0**。包要求 Node.js ≥24.9.0，并锁定该 dsh 版本；升级 dsh 后需要重新验证其插件 API。
 
-0.2.0 使用协议 v2，移除了 pin 接口与固定引用状态；VS Code 请配套使用 `vsc-agents-connector 0.3.3+`。旧协议注册不会被新 SDK 发现，升级两端后重新连接。
+0.3.0 使用协议 v3，连接与状态的键从会话改为工作目录，`connect` 不再恢复会话；VS Code 请配套使用 `vsc-agents-connector 0.4.0+`。旧协议注册不会被新 SDK 发现，升级两端后重新连接。
 
 ## 安装
 
@@ -32,7 +33,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-editor-socket
 
 重启对应 dsh profile。Desktop 用户应使用 Desktop 安装附带的 `dsh` 命令管理已初始化的 `desktop` profile；npm 安装的 CLI 不管理 Desktop profile。
 
-也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.2.0.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
+也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.3.0.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
 
 ## 编辑器接入
 
@@ -49,15 +50,14 @@ for (const socket of await discoverSockets()) {
   })
   // 注册文件可能由异常退出的进程留下；实际集成应捕获连接失败并跳过。
   const sessions = await plug.sessions()
-  // 让用户选择与当前 workspace 根目录完全相同的会话（可包含未加载的历史）。
-  const session = sessions.find(item => item.directory === '/your/workspace')
-  if (!session) continue
+  // 用会话列表判断该实例是否服务目标工作目录；连接本身只认目录，不挑会话。
+  const serves = sessions.some(item => item.directory === '/your/workspace')
+  if (!serves) continue
   await plug.connect({
-    sessionId: session.sessionId, clientId: crypto.randomUUID(),
-    editor: 'VS Code', workspace: session.directory,
+    clientId: crypto.randomUUID(), editor: 'VS Code', workspace: '/your/workspace',
   })
   await plug.update({
-    workspace: session.directory, path: '/your/workspace/src/main.ts',
+    workspace: '/your/workspace', path: '/your/workspace/src/main.ts',
     selection: { start: 10, end: 15, text: 'selected buffer text' },
   })
   // plug.clear() 清除当前引用；后续 update() 恢复跟随。
@@ -69,7 +69,7 @@ for (const socket of await discoverSockets()) {
 
 编辑器负责对点击和选区事件去抖，并在离开当前工作区或没有文件时调用 `clear()`。行号从 1 开始，结束行包含在范围内；若 VS Code 选区结束于下一行第 0 列，结束行应回退一行。未选择文本时只发送文件路径。`clientId` 在同一编辑器窗口的重连期间应保持稳定。
 
-Web / Desktop 宿主通过 `sessionController` 枚举普通会话，包括磁盘中的历史；跳过 subagent 子会话、已归档会话和未加载的空白占位会话。已加载的空白会话仍可连接，方便在第一条消息前接入编辑器。列表查询只读，连接时先检查工作目录，再按需恢复选中的 agent。未挂载该服务的精简宿主兼容原来的已加载会话模式。编辑器与 dsh 必须处于同一文件系统命名空间；Remote SSH / 容器场景应让 VS Code workspace 扩展和 dsh 在同一远端运行。当前不提供跨机器路径映射或远程监听。
+`sessions()` 仅供编辑器挑选/展示目标目录（复用 dsh 的原生 Session 列表，包含未加载历史、跳过 subagent 子会话、已归档会话和未加载的空白占位会话）。连接、更新、清除都只以 `workspace` 为键；同目录会话随后被用户打开时自动纳入覆盖。目录在连接时必须存在于 dsh 宿主文件系统，否则返回 `workspace-mismatch`。编辑器与 dsh 必须处于同一文件系统命名空间；Remote SSH / 容器场景应让 VS Code workspace 扩展和 dsh 在同一远端运行。当前不提供跨机器路径映射或远程监听。
 
 ## 配置与协议
 
@@ -81,7 +81,7 @@ Web / Desktop 宿主通过 `sessionController` 枚举普通会话，包括磁盘
 - id: dsh-editor-socket
   config:
     maxSelectionBytes: 32768
-    maxSessions: 32
+    maxWorkspaces: 32
     leaseMs: 30000
     watchMs: 25000
     maxWatchers: 128
@@ -105,9 +105,9 @@ npm run build
 
 链接脚本只在本仓库创建被 Git 忽略的 `node_modules` 链接，不修改 dsh checkout。常规独立开发使用 `npm install`。
 
-测试包含真实 dsh AgentLoop / Connection 服务、录制型模型适配器、本机 HTTP listener、队列快照与插件重载恢复，以及输入区渲染和订阅取消。测试不访问模型 API、不修改已有 dsh profile；运行环境需要允许本机回环监听。Desktop 覆盖的是原生 IPC 共用的 Fetch 路由，不等同于 Electron 界面的人工验收。
+测试包含真实 dsh AgentLoop / Connection 服务、录制型模型适配器、本机 HTTP listener、同目录多会话共享上下文、队列快照与插件重载恢复，以及输入区渲染和订阅取消。测试不访问模型 API、不修改已有 dsh profile；运行环境需要允许本机回环监听。Desktop 覆盖的是原生 IPC 共用的 Fetch 路由，不等同于 Electron 界面的人工验收。
 
-本仓库已作为 `vsc-agents-connector` 的 `vendor/dsh-editor-socket` submodule 接入。安装连接器 VSIX 后，使用 **VSC Agents: Connect to Local Service** 选择对应 DSH 会话即可开始跟随。
+本仓库已作为 `vsc-agents-connector` 的 `vendor/dsh-editor-socket` submodule 接入。安装连接器 VSIX 后，使用 **VSC Agents: Connect to Local Service** 选择目标目录下的任意 DSH 会话即可开始跟随；连接以目录为单位，同目录其余会话自动纳入。
 
 两个仓库都构建后，可以验证编译后的 VS Code adapter 与真实 DSH AgentLoop 的完整通信链路：
 
@@ -115,7 +115,7 @@ npm run build
 node scripts/smoke-vscode.mjs ../vsc-agents-connector/out/src/agents/dsh/index.js
 ```
 
-历史会话回归使用真实 DSH 进程重启、磁盘持久化与编译后的 VS Code adapter，验证「6 条历史全部列出、查询时加载 0 条、选择后仅恢复 1 条」以及恢复后的选区捕获：
+历史会话回归使用真实 DSH 进程重启、磁盘持久化与编译后的 VS Code adapter，验证「6 条历史全部列出、发现和连接各加载 0 条、用户打开的会话被目录租约覆盖、发送后捕获编辑器上下文」：
 
 ```sh
 # 需要 PATH 中的 dsh，并先编译 ../vsc-agents-connector；所有数据位于独立临时目录。

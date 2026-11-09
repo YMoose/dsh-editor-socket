@@ -67,32 +67,35 @@ export async function apply(ctx, { root, phase, adapterPath }) {
 
       const registration = registrations[0]
       const plug = new EditorPlug({ url: registration.url, headers: { authorization: `Bearer ${registration.token}` } })
-      const request = { clientId: 'invalid-target-test', editor: 'VS Code', workspace }
-      await assert.rejects(plug.connect({ ...request, sessionId: 'editor-history-other-workspace' }), { code: 'editor-socket/workspace-mismatch' })
-      await assert.rejects(plug.connect({ ...request, sessionId: 'missing-history' }), { code: 'editor-socket/session-unavailable' })
-      await assert.rejects(plug.connect({ ...request, sessionId: 'editor-history-unused-blank' }), { code: 'editor-socket/session-unavailable' })
-      await assert.rejects(plug.connect({ ...request, sessionId: 'editor-history-archived' }), { code: 'editor-socket/session-unavailable' })
-      assert.equal(ctx.agents.list().length, 0, 'rejected targets must not activate an agent')
+      await assert.rejects(plug.connect({ clientId: 'missing-directory-test', editor: 'VS Code', workspace: join(root, 'missing') }), { code: 'editor-socket/workspace-mismatch' })
+      await plug.connect({ clientId: 'history-verify', editor: 'VS Code', workspace })
+      assert.equal(ctx.agents.list().length, 0, 'a workspace connection must not resume any history')
+      await plug.update({
+        path: join(workspace, 'sample.ts'), workspace,
+        selection: { start: 1, end: 2, text: 'HISTORY_WORKSPACE_SELECTION' },
+      })
+      assert.equal(records.length, 0, 'connecting and editor updates must not submit a prompt')
+      const refreshed = await adapter.discoverSessions(workspace)
+      assert.equal(refreshed[0].sessions.length, 6, 'connecting must not duplicate or hide a session')
+      await plug.disconnect()
 
+      // The user opens one persisted session in the GUI; the directory lease already covers it.
+      const opened = await ctx.sessionController.resolveAgent(SessionId(ids[3]))
+      assert.equal(ctx.agents.list().length, 1, 'only the opened session is resumed')
       connected = { agentId: 'dsh', sessionID: ids[3], directory: workspace, url: groups[0].url, header: groups[0].header }
       await adapter.connect(connected)
-      assert.deepEqual(ctx.agents.list().map(agent => agent.id), [ids[3]], 'only the selected history is resumed')
       await adapter.liveFollow.update(connected, {
         fsPath: join(workspace, 'sample.ts'), relativePath: 'sample.ts', workspaceFolder: workspace,
         selection: { start: 1, end: 2, text: 'HISTORY_RESUMED_SELECTION' },
       })
-      assert.equal(records.length, 0, 'connecting and editor updates must not submit a prompt')
-      const refreshed = await adapter.discoverSessions(workspace)
-      assert.equal(refreshed[0].sessions.length, 6, 'resuming must not duplicate or hide a session')
-
-      const selected = ctx.agents.get(SessionId(ids[3]))
-      selected.followup(message('Explain the resumed editor selection'))
-      await selected.whenIdle()
+      opened.agent.followup(message('Explain the resumed editor selection'))
+      await opened.agent.whenIdle()
       assert.equal(records.length, 1)
       assert.match(JSON.stringify(records[0]), /HISTORY_RESUMED_SELECTION/)
+      assert.doesNotMatch(JSON.stringify(records[0]), /HISTORY_WORKSPACE_SELECTION/, 'a fresh connection cleared the earlier live reference')
       await writeFile(join(root, 'verify-result.json'), JSON.stringify({
-        ok: true, historyListed: 6, loadedAfterDiscovery: 0, loadedAfterConnect: 1,
-        modelRequestsBeforeSend: 0, capturedOnExplicitSend: true,
+        ok: true, historyListed: 6, loadedAfterDiscovery: 0, loadedAfterConnect: 0,
+        resumedByUserOpen: 1, modelRequestsBeforeSend: 0, capturedOnExplicitSend: true,
       }))
     } finally {
       if (connected) await adapter.disconnect(connected)

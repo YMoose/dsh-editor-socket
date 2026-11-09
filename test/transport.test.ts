@@ -46,13 +46,13 @@ test('plug serializes updates and clears, freezes caller data, and closes before
   const store = new EditorStore(resolveConfig())
   const socket = await startSocket(async (method, input) => {
     if (method === 'info') return { ok: true, value: { protocolVersion: PROTOCOL_VERSION } }
-    if (method === 'connect') return { ok: true, value: store.connect(input as Parameters<EditorStore['connect']>[0], '/tmp') }
+    if (method === 'connect') return { ok: true, value: store.connect(input as Parameters<EditorStore['connect']>[0]) }
     return { ok: true, value: store.mutate(method, input) }
   }, directory)
   t.after(socket.close)
   const plug = new EditorPlug({ url: socket.registration.url, headers: { authorization: `Bearer ${socket.registration.token}` } })
-  const connecting = plug.connect({ sessionId: 's', clientId: 'window', editor: 'VS Code', workspace: '/tmp' })
-  await assert.rejects(plug.connect({ sessionId: 's', clientId: 'window', editor: 'VS Code', workspace: '/tmp' }), /Disconnect/)
+  const connecting = plug.connect({ clientId: 'window', editor: 'VS Code', workspace: '/tmp' })
+  await assert.rejects(plug.connect({ clientId: 'window', editor: 'VS Code', workspace: '/tmp' }), /Disconnect/)
   await connecting
   const snapshot = { path: '/tmp/a.ts', workspace: '/tmp' }
   const update = plug.update(snapshot)
@@ -62,7 +62,7 @@ test('plug serializes updates and clears, freezes caller data, and closes before
   await assert.rejects(plug.clear(), /not connected/)
   assert.equal((await update).live?.path, '/tmp/a.ts')
   await Promise.all([clear, disconnect])
-  assert.equal(store.state('s').live, null)
+  assert.equal(store.state('/tmp').live, null)
   assert.equal((await fetch(`${socket.registration.url}/editor-socket/pin`, { method: 'POST', headers: { authorization: `Bearer ${socket.registration.token}` } })).status, 404)
-  assert.equal(store.state('s').connected, false)
+  assert.equal(store.state('/tmp').connected, false)
 })
