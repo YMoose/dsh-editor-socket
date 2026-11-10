@@ -1,0 +1,74 @@
+{
+  "name": "dsh-editor-claude-adapter",
+  "displayName": "DSH: Claude Code Selection Bridge",
+  "version": "0.1.0",
+  "description": "VS Code extension: bridge Claude Code IDE selections into dsh-editor-socket.",
+  "type": "module",
+  "license": "MIT",
+  "author": "YMOOSE <42179813+YMoose@users.noreply.github.com>",
+  "publisher": "moose",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YMoose/dsh-editor-socket.git",
+    "directory": "packages/claude-adapter"
+  },
+  "engines": {
+    "node": ">=24.9.0",
+    "vscode": "^1.95.0"
+  },
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "dsh-claude-adapter.connect", "title": "DSH: Connect Claude Selections" },
+      { "command": "dsh-claude-adapter.disconnect", "title": "DSH: Disconnect Claude Selections" }
+    ],
+    "configuration": {
+      "title": "DSH Claude Adapter",
+      "properties": {
+        "dsh-claude-adapter.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically discover and bridge Claude Code selections on startup."
+        }
+      }
+    }
+  },
+  "main": "./lib/extension.js",
+  "types": "./lib/types/extension.d.ts",
+  "exports": {
+    ".": {
+      "development": {
+        "types": "./src/extension.ts",
+        "default": "./src/extension.ts"
+      },
+      "types": "./lib/types/extension.d.ts",
+      "default": "./lib/extension.js"
+    },
+    "./claude": {
+      "development": {
+        "types": "./src/claude.ts",
+        "default": "./src/claude.ts"
+      },
+      "types": "./lib/types/claude.d.ts",
+      "default": "./lib/claude.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "check": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "dsh-editor-plug": "^3.0.0",
+    "dsh-editor-protocol": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/vscode": "^1.95.0"
+  }
+}

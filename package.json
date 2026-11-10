@@ -159,8 +159,8 @@
     "typescript": "6.0.3"
   },
   "scripts": {
-    "build": "npm run build --workspace dsh-editor-protocol && npm run build --workspace dsh-editor-plug && npm run build --workspace dsh-editor-socket",
-    "check": "npm run check --workspace dsh-editor-protocol && npm run check --workspace dsh-editor-plug && npm run check --workspace dsh-editor-socket && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "build": "npm run build --workspace dsh-editor-protocol && npm run build --workspace dsh-editor-plug && npm run build --workspace dsh-editor-claude-adapter && npm run build --workspace dsh-editor-socket",
+    "check": "npm run check --workspace dsh-editor-protocol && npm run check --workspace dsh-editor-plug && npm run check --workspace dsh-editor-claude-adapter && npm run check --workspace dsh-editor-socket && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
     "test": "node --conditions=development --import tsx --test test/*.test.ts",
     "test:history": "npm run build && node scripts/smoke-history.mjs",
     "link:dsh": "node scripts/link-dsh.mjs",

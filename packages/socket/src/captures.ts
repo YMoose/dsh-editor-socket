@@ -6,7 +6,11 @@ import type {} from '@deepseek-ai/dsh-agent'
 
 const snapshot = z.object({
   path: z.string(), workspace: z.string(),
-  selection: z.object({ start: z.number().int().positive(), end: z.number().int().positive(), text: z.string().optional() }).optional(),
+  selection: z.object({
+    start: z.number().int().positive(), end: z.number().int().positive(),
+    startCharacter: z.number().int().nonnegative().optional(), endCharacter: z.number().int().nonnegative().optional(),
+    text: z.string().optional(),
+  }).optional(),
 })
 const capture = z.object({ messageId: z.string(), snapshots: z.array(snapshot) })
 const schema = z.object({

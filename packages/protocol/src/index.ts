@@ -1,4 +1,7 @@
-/** Editor-neutral wire contract. All line numbers are one-based and inclusive. */
+/**
+ * Editor-neutral wire contract.
+ * Line numbers are one-based and inclusive. Character offsets are zero-based when present.
+ */
 export const CHANNEL = '/editor-socket'
 export const PROTOCOL_VERSION = 3
 
@@ -6,7 +9,15 @@ export interface EditorSnapshot {
   /** Path in the DSH host's filesystem namespace. The socket never reads this file. */
   readonly path: string
   readonly workspace: string
-  readonly selection?: { readonly start: number; readonly end: number; readonly text?: string }
+  readonly selection?: {
+    readonly start: number
+    readonly end: number
+    /** 0-based character offset within `start` line. Omit when unknown or line-only. */
+    readonly startCharacter?: number
+    /** 0-based character offset within `end` line. Exclusive when `end > start`, inclusive-ish within a single line (match editor semantics). */
+    readonly endCharacter?: number
+    readonly text?: string
+  }
 }
 
 export interface EditorState {
@@ -103,18 +114,49 @@ export function snapshotOf(value: unknown, workspace: string, limits: ProtocolLi
   const selection = record(input.selection)
   const start = integer(selection.start, 'selection.start')
   const end = integer(selection.end, 'selection.end', start)
+  const startCharacter = optionalCharacter(selection.startCharacter, 'selection.startCharacter')
+  const endCharacter = optionalCharacter(selection.endCharacter, 'selection.endCharacter')
+  if ((startCharacter === undefined) !== (endCharacter === undefined)) {
+    throw new SocketError('invalid-selection', 'selection.startCharacter and selection.endCharacter must be provided together')
+  }
+  if (start === end && startCharacter !== undefined && endCharacter !== undefined && endCharacter < startCharacter) {
+    throw new SocketError('invalid-selection', 'selection.endCharacter must not precede selection.startCharacter on the same line')
+  }
   const text = selection.text
   if (text !== undefined && (typeof text !== 'string' || new TextEncoder().encode(text).length > limits.maxSelectionBytes)) {
     throw new SocketError('selection-too-large', `Selected text must fit in ${limits.maxSelectionBytes} UTF-8 bytes`)
   }
-  return { path, workspace: root, selection: { start, end, ...(text === undefined ? {} : { text: text as string }) } }
+  return {
+    path,
+    workspace: root,
+    selection: {
+      start,
+      end,
+      ...(startCharacter === undefined ? {} : { startCharacter }),
+      ...(endCharacter === undefined ? {} : { endCharacter }),
+      ...(text === undefined ? {} : { text: text as string }),
+    },
+  }
 }
 
-/** Display only; the model receives structured JSON rather than this mention grammar. */
+/** Character offsets are zero-based, unlike the one-based line numbers. */
+function optionalCharacter(value: unknown, field: string): number | undefined {
+  return value === undefined ? undefined : integer(value, field, 0)
+}
+
+/**
+ * Display only; the model receives structured JSON rather than this mention grammar.
+ * Formats: `path#L10`, `path#L10-L15`, `path#L10:5-L10:12`, `path#L15:5-L20:2`.
+ * Both `L<line>` sides stay explicit when characters are present so the anchor is unambiguous.
+ */
 export function label(snapshot: EditorSnapshot): string {
   const path = snapshot.path.slice(snapshot.workspace.replace(/\/$/u, '').length + 1) || snapshot.path
   const range = snapshot.selection
-  return range ? `${path}#L${range.start}${range.end === range.start ? '' : `-${range.end}`}` : path
+  if (!range) return path
+  const columns = range.startCharacter !== undefined && range.endCharacter !== undefined
+  const from = `${range.start}${columns ? `:${range.startCharacter}` : ''}`
+  if (!columns && range.end === range.start) return `${path}#L${from}`
+  return `${path}#L${from}-L${range.end}${columns ? `:${range.endCharacter}` : ''}`
 }
 
 /** Include selected buffer text when available; a path alone is not a claim to have read a file. */

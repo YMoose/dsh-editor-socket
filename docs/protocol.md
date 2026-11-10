@@ -1,5 +1,11 @@
 # Editor socket protocol v3
 
+## Unreleased
+
+- `selection` gains optional `startCharacter`/`endCharacter` (0-based column
+  offsets). They are additive: line-only payloads keep working, and
+  `PROTOCOL_VERSION` stays 3 because no existing field changes meaning.
+
 Version 3 changes the connection unit from session to working directory. `connect`
 no longer names a session and never resumes one; leases, live references, state
 and mutations are keyed by `workspace`. `state`/`watch`/`edit` still accept a
@@ -112,12 +118,20 @@ time. No cross-host path mapping exists.
 {
   "path":"/work/project/src/main.ts",
   "workspace":"/work/project",
-  "selection":{"start":10,"end":15,"text":"optional selected buffer text"}
+  "selection":{"start":10,"end":15,"startCharacter":5,"endCharacter":2,"text":"optional selected buffer text"}
 }
 ```
 
 Lines are 1-based and inclusive. Selection may be omitted. Text is optional and
 limited to 32768 UTF-8 bytes by default; a file reference does not include its contents.
+
+`startCharacter`/`endCharacter` are optional 0-based character offsets within the
+`start`/`end` line. They must be supplied together — a half-specified pair is
+rejected with `invalid-selection` — and when `start === end`, `endCharacter` must
+not precede `startCharacter`. Omitting both keeps the original line-only behavior.
+`endCharacter` is exclusive when `end > start` and follows editor semantics within a
+single line. Hosts that do not understand columns simply drop them and still apply
+the line range, so no protocol version bump was needed.
 
 State is `{workspace, version, connected, editor, live}`. `workspace` is the
 observed directory, empty for sessions without one. `live` is a snapshot or null.
@@ -144,7 +158,7 @@ user-role context after the corresponding user message. Values are rendered as J
 reference data, explicitly not instructions. Historical context remains in normal
 DSH conversation history after sending, even when the current editor state is cleared.
 
-Useful business errors: `invalid`, `workspace-mismatch`, `busy`, `disconnected`,
+Useful business errors: `invalid`, `invalid-selection`, `workspace-mismatch`, `busy`, `disconnected`,
 `capacity`, `selection-too-large`, `conflict`, `closed`, `internal`, all prefixed
 with `editor-socket/`. v2's `session-unavailable` is gone: v3 `connect` never
 targets a session, and composer calls on a vanished session simply report an
