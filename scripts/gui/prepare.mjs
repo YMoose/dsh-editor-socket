@@ -12,7 +12,7 @@ const debugPort = Number(args[1] ?? 9223)
 if (!Number.isInteger(debugPort) || debugPort < 1024 || debugPort > 65535) throw new Error('Use a free debug port between 1024 and 65535')
 const connector = JSON.parse(await readFile(join(connectorRoot, 'package.json'), 'utf8'))
 if (connector.name !== 'vsc-agents-connector') throw new Error('Pass the vsc-agents-connector checkout')
-await access(join(socketRoot, 'lib/client.js'))
+await access(join(socketRoot, 'packages/socket/lib/client.js'))
 await access(join(connectorRoot, 'out/src/extension.js'))
 
 const root = await mkdtemp(join(tmpdir(), 'dsh-editor-gui-'))

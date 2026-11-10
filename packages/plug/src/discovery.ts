@@ -3,7 +3,7 @@ import { open, readdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import { PROTOCOL_VERSION, record } from './protocol.ts'
+import { PROTOCOL_VERSION, record } from 'dsh-editor-protocol'
 
 export interface Registration {
   readonly protocolVersion: number

@@ -12,9 +12,9 @@ import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
-import * as Socket from '../src/index.ts'
-import { EditorPlug } from '../src/plug.ts'
-import type { Registration } from '../src/transport.ts'
+import * as Socket from 'dsh-editor-socket'
+import { EditorPlug } from 'dsh-editor-plug'
+import type { Registration } from 'dsh-editor-socket/transport'
 
 class Recorder extends LlmAdapter {
   requests: GenerateOptions[] = []

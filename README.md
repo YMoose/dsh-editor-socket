@@ -20,6 +20,51 @@
 
 0.3.0 使用协议 v3，连接与状态的键从会话改为工作目录，`connect` 不再恢复会话；VS Code 请配套使用 `vsc-agents-connector 0.4.0+`。旧协议注册不会被新 SDK 发现，升级两端后重新连接。
 
+## 仓库结构
+
+本仓库是 npm workspaces monorepo，按「协议契约 → 编辑器 SDK → 宿主」三层拆分：
+
+```
+dsh-editor-socket/
+├── package.json            # 根包（private），workspaces: ["packages/*"]
+├── tsconfig.base.json      # 共享 compilerOptions
+├── packages/
+│   ├── protocol/           # dsh-editor-protocol  3.0.0
+│   ├── plug/               # dsh-editor-plug      3.0.0
+│   └── socket/             # dsh-editor-socket    0.3.0
+├── scripts/  test/  docs/  locale/
+└── cordis.patch.yml
+```
+
+| 包 | 版本 | 职责 | 内部依赖 |
+|---|---|---|---|
+| `dsh-editor-protocol` | 3.0.0 | 协议 schema、版本号、类型与边界校验。只依赖 `zod` | — |
+| `dsh-editor-plug` | 3.0.0 | 编辑器 SDK：`EditorPlug` 客户端与本地发现 | protocol |
+| `dsh-editor-socket` | 0.3.0 | DSH 宿主端：路由、租约、上下文捕获与注入 | protocol、plug |
+
+依赖方向单一，没有循环：`socket → plug → protocol`。`protocol` 是叶子，只描述线上格式，因此协议版本号（`PROTOCOL_VERSION = 3`）独立于两个包的发布版本。
+
+**版本策略**：`protocol` 与 `plug` 同为主版本号 3，对应协议 v3，两者必须一起升级——编辑器和 SDK 之间没有向后兼容承诺。宿主包 `dsh-editor-socket` 保留 0.3.0 的既有版本序列，便于已安装它的 dsh profile 平滑升级。协议不兼容时，发现与 `connect` 都会各自校验版本并拒绝旧对端。
+
+### 构建与检查
+
+每个包独立用 `tsc` 构建（不使用 project references，也不用 esbuild 统一打包）；宿主端只有浏览器侧 `client/` 由 esbuild 打成 DSH 闭包模块。
+
+```sh
+npm install     # 解析 workspaces，把三个包互相链接到 node_modules
+npm run check   # 三个包分别 tsc --noEmit，外加根目录测试类型检查
+npm run build   # 按 protocol → plug → socket 顺序构建
+npm test        # 12 个测试，直接以包名 import 源码
+```
+
+`npm run build` 与 `npm run check` 都按依赖顺序执行，因此不会出现「socket 先于 protocol 构建」的问题。测试通过 `development` export 条件直接解析到各包 `src/*.ts`，所以 `npm test` 无需先构建。
+
+### 本地开发与发布
+
+根包保持 `name: dsh-editor-socket`，`main`/`types`/`exports` 指向 `packages/socket/lib/`，因此 `dsh plugin add /path/to/dsh-editor-socket` 与 `cordis.patch.yml` 的行为与单包时期一致。`npm pack` 生成的 tarball 包含 `packages/*/lib`、`locale`、`cordis.patch.yml`、README 与协议文档。
+
+注意 tarball 的依赖边界：根包的 `dependencies` 指向 `dsh-editor-protocol` 与 `dsh-editor-plug`，而这两个包目前尚未发布到 npm（见下文），所以从 tarball 安装会去 registry 解析它们并失败。需要 tarball 分发时，请先发布这两个包，或改用目录安装（`dsh plugin add /path/to/dsh-editor-socket`），后者通过符号链接整个 checkout，可直接使用工作区内的三个包。
+
 ## 安装
 
 此仓库尚未发布到 npm。先构建本地 checkout，再添加到正在使用的 dsh profile：
@@ -33,15 +78,15 @@ dsh plugin --profile web add /absolute/path/to/dsh-editor-socket
 
 重启对应 dsh profile。Desktop 用户应使用 Desktop 安装附带的 `dsh` 命令管理已初始化的 `desktop` profile；npm 安装的 CLI 不管理 Desktop profile。
 
-也可用 `npm pack` 构建并生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.3.0.tgz` 安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
+也可用 `npm pack` 生成 tarball，再用 `dsh plugin --profile web add /absolute/path/to/dsh-editor-socket-0.3.0.tgz` 安装，但前提是 `dsh-editor-protocol` 与 `dsh-editor-plug` 已发布到 npm；当前这两个包未发布，标准做法仍是上面的目录安装。`prepack` 会运行类型检查、测试和构建。安装本插件后，还需要编辑器侧 plug 才会收到点击和选区事件。
 
 ## 编辑器接入
 
 库提供无 DSH / VS Code 运行时依赖的发现与通信模块：
 
 ```ts
-import { discoverSockets } from 'dsh-editor-socket/discovery'
-import { EditorPlug } from 'dsh-editor-socket/plug'
+import { discoverSockets } from 'dsh-editor-plug/discovery'
+import { EditorPlug } from 'dsh-editor-plug'
 
 for (const socket of await discoverSockets()) {
   const plug = new EditorPlug({
@@ -103,11 +148,13 @@ npm test
 npm run build
 ```
 
-链接脚本只在本仓库创建被 Git 忽略的 `node_modules` 链接，不修改 dsh checkout。常规独立开发使用 `npm install`。
+链接脚本只在本仓库创建被 Git 忽略的 `node_modules` 链接，不修改 dsh checkout；它把依赖装在**根** `node_modules`，三个工作区包通过 Node 的目录向上查找共享同一份 `@deepseek-ai/*`，无需在 `packages/*` 下重复安装。常规独立开发使用 `npm install`；注意 `npm install` 会按 `package.json` 重新解析依赖，可能替掉上述本地链接，离线环境请先准备 registry 缓存或改用 `link:dsh`。
 
 测试包含真实 dsh AgentLoop / Connection 服务、录制型模型适配器、本机 HTTP listener、同目录多会话共享上下文、队列快照与插件重载恢复，以及输入区渲染和订阅取消。测试不访问模型 API、不修改已有 dsh profile；运行环境需要允许本机回环监听。Desktop 覆盖的是原生 IPC 共用的 Fetch 路由，不等同于 Electron 界面的人工验收。
 
 本仓库已作为 `vsc-agents-connector` 的 `vendor/dsh-editor-socket` submodule 接入。安装连接器 VSIX 后，使用 **VSC Agents: Connect to Local Service** 选择目标目录下的任意 DSH 会话即可开始跟随；连接以目录为单位，同目录其余会话自动纳入。
+
+> **升级注意**：本仓库改为 monorepo 后，构建产物不再是扁平的 `lib/plug.js`、`lib/discovery.js`、`lib/protocol.js`，而是 `packages/plug/lib/*.js`、`packages/protocol/lib/index.js`。`vsc-agents-connector` 里 `src/agents/dsh/index.ts` 与 `tsconfig.dsh.json` 对 vendor 路径的引用需要同步改为新位置（或改为按包名 `dsh-editor-plug` / `dsh-editor-protocol` 导入并在 connector 侧配置 workspace 依赖）。
 
 两个仓库都构建后，可以验证编译后的 VS Code adapter 与真实 DSH AgentLoop 的完整通信链路：
 

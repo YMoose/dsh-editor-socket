@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { SocketError, normalizePath, snapshotOf, string, integer, record } from './protocol.ts'
-import type { ConnectRequest, ConnectionReceipt, EditorSnapshot, EditorState, ProtocolLimits } from './protocol.ts'
+import { SocketError, normalizePath, snapshotOf, string, integer, record } from 'dsh-editor-protocol'
+import type { ConnectRequest, ConnectionReceipt, EditorSnapshot, EditorState, ProtocolLimits } from 'dsh-editor-protocol'
 
 interface Entry {
   workspace: string

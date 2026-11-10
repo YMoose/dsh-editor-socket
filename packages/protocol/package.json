@@ -1,0 +1,35 @@
+{
+  "name": "dsh-editor-protocol",
+  "version": "3.0.0",
+  "description": "Editor-neutral wire contract for dsh-editor-socket: schemas, protocol version and value types.",
+  "type": "module",
+  "license": "MIT",
+  "author": "YMOOSE <42179813+YMoose@users.noreply.github.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YMoose/dsh-editor-socket.git",
+    "directory": "packages/protocol"
+  },
+  "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "development": {
+        "types": "./src/index.ts",
+        "default": "./src/index.ts"
+      },
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "check": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  }
+}

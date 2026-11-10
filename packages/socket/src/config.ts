@@ -1,5 +1,5 @@
-import { SocketError } from './protocol.ts'
-import type { ProtocolLimits } from './protocol.ts'
+import { SocketError } from 'dsh-editor-protocol'
+import type { ProtocolLimits } from 'dsh-editor-protocol'
 
 export type Config = Partial<ProtocolLimits> & {
   /** Private per-instance registration files for local editor discovery. */

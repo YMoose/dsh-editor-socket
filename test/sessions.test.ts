@@ -4,7 +4,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller'
 import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@deepseek-ai/dsh-agent-loop-testkit'
-import { EditorSessions } from '../src/sessions.ts'
+import { EditorSessions } from 'dsh-editor-socket/sessions'
 
 test('history discovery is read-only and directory-scoped; connection targets no session', async t => {
   const ctx = new Context()
@@ -18,8 +18,13 @@ test('history discovery is read-only and directory-scoped; connection targets no
   const items = [row('one'), row('two'), row('other', { cwd: '/other' }), row('child', { origin: 'subagent' }), row('no-cwd', { cwd: undefined }), row('blank', { blank: true }), row('archived')]
   ctx.provide('workspaceRegistry', { archivedSessionIds: [SessionId('archived')] } as unknown as Context['workspaceRegistry'])
   // Only the Session API boundary is doubled here; the restart smoke uses its real implementation.
+  // A real controller lists live agents alongside persisted rows, so the double must too.
   ctx.provide('sessionController', {
-    list: async (_input: unknown, signal: AbortSignal) => { signal.throwIfAborted(); return { items } },
+    list: async (_input: unknown, signal: AbortSignal) => {
+      signal.throwIfAborted()
+      const live = ctx.agents.list().map(agent => row(agent.id, { agentAvailable: true }))
+      return { items: [...items, ...live] }
+    },
   } as unknown as Context['sessionController'])
   const sessions = new EditorSessions(ctx)
   const signal = new AbortController().signal

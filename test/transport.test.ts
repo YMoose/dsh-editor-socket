@@ -4,12 +4,12 @@ import { mkdtemp, readFile, writeFile, symlink, chmod, rm } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { startSocket } from '../src/transport.ts'
-import { discoverSockets } from '../src/discovery.ts'
-import { EditorPlug } from '../src/plug.ts'
-import { PROTOCOL_VERSION } from '../src/protocol.ts'
-import { EditorStore } from '../src/store.ts'
-import { resolveConfig } from '../src/config.ts'
+import { startSocket } from 'dsh-editor-socket/transport'
+import { discoverSockets } from 'dsh-editor-plug/discovery'
+import { EditorPlug } from 'dsh-editor-plug'
+import { PROTOCOL_VERSION } from 'dsh-editor-protocol'
+import { EditorStore } from 'dsh-editor-socket/store'
+import { resolveConfig } from 'dsh-editor-socket/config'
 
 test('discovery validates owner-only loopback registrations; transport bounds and authenticates requests', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'editor-discovery-'))

@@ -4,14 +4,18 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { mkdir, writeFile, unlink } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
-import { CHANNEL, PROTOCOL_VERSION, SocketError, record, string } from './protocol.ts'
-import { defaultDiscoveryDirectory } from './discovery.ts'
-import type { Registration } from './discovery.ts'
-export type { Registration } from './discovery.ts'
+import { CHANNEL, PROTOCOL_VERSION, SocketError, record, string } from 'dsh-editor-protocol'
+import { defaultDiscoveryDirectory } from 'dsh-editor-plug/discovery'
+import type { Registration } from 'dsh-editor-plug/discovery'
+export type { Registration } from 'dsh-editor-plug/discovery'
 
 export type Result = { ok: true; value: unknown } | { ok: false; error: { code: string; message: string; details: object } }
 export type Dispatch = (method: string, payload: unknown, signal: AbortSignal) => Promise<Result>
 export const METHODS = ['info', 'sessions', 'connect', 'state', 'watch', 'edit', 'update', 'clear', 'heartbeat', 'disconnect'] as const
+/** Editor-side mutations, identified by workspace lease; they carry no session. */
+export const MUTATIONS: ReadonlySet<string> = new Set(['update', 'clear', 'heartbeat', 'disconnect'])
+/** Composer-side reads and controls, identified by the requesting session. */
+export const COMPOSER: ReadonlySet<string> = new Set(['state', 'watch', 'edit'])
 
 /** Decode exactly the Connection RPC envelope used by DSH browser and IPC clients. */
 export async function respond(dispatch: Dispatch, method: string, input: unknown, signal: AbortSignal): Promise<object> {

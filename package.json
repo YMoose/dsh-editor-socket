@@ -2,6 +2,7 @@
   "name": "dsh-editor-socket",
   "version": "0.3.0",
   "description": "Session-scoped editor file and selection context for DeepSeek Harness.",
+  "private": true,
   "type": "module",
   "license": "MIT",
   "author": "YMOOSE <42179813+YMoose@users.noreply.github.com>",
@@ -13,35 +14,100 @@
     "node": ">=24.9.0",
     "dsh": "0.2.2-rc.1"
   },
-  "main": "./lib/index.js",
-  "types": "./lib/types/index.d.ts",
+  "workspaces": [
+    "packages/*"
+  ],
+  "main": "./packages/socket/lib/index.js",
+  "types": "./packages/socket/lib/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
+      "development": {
+        "types": "./packages/socket/src/index.ts",
+        "default": "./packages/socket/src/index.ts"
+      },
+      "types": "./packages/socket/lib/types/index.d.ts",
+      "default": "./packages/socket/lib/index.js"
+    },
+    "./store": {
+      "development": {
+        "types": "./packages/socket/src/store.ts",
+        "default": "./packages/socket/src/store.ts"
+      },
+      "types": "./packages/socket/lib/types/store.d.ts",
+      "default": "./packages/socket/lib/store.js"
+    },
+    "./sessions": {
+      "development": {
+        "types": "./packages/socket/src/sessions.ts",
+        "default": "./packages/socket/src/sessions.ts"
+      },
+      "types": "./packages/socket/lib/types/sessions.d.ts",
+      "default": "./packages/socket/lib/sessions.js"
+    },
+    "./captures": {
+      "development": {
+        "types": "./packages/socket/src/captures.ts",
+        "default": "./packages/socket/src/captures.ts"
+      },
+      "types": "./packages/socket/lib/types/captures.d.ts",
+      "default": "./packages/socket/lib/captures.js"
+    },
+    "./transport": {
+      "development": {
+        "types": "./packages/socket/src/transport.ts",
+        "default": "./packages/socket/src/transport.ts"
+      },
+      "types": "./packages/socket/lib/types/transport.d.ts",
+      "default": "./packages/socket/lib/transport.js"
+    },
+    "./config": {
+      "development": {
+        "types": "./packages/socket/src/config.ts",
+        "default": "./packages/socket/src/config.ts"
+      },
+      "types": "./packages/socket/lib/types/config.d.ts",
+      "default": "./packages/socket/lib/config.js"
     },
     "./client": {
-      "types": "./lib/types/client/index.d.ts",
-      "default": "./lib/client.js"
+      "types": "./packages/socket/lib/types/client/index.d.ts",
+      "default": "./packages/socket/lib/client.js"
+    },
+    "./client/*": {
+      "development": "./packages/socket/src/client/*"
     },
     "./protocol": {
-      "types": "./lib/types/protocol.d.ts",
-      "default": "./lib/protocol.js"
+      "development": {
+        "types": "./packages/protocol/src/index.ts",
+        "default": "./packages/protocol/src/index.ts"
+      },
+      "types": "./packages/protocol/lib/types/index.d.ts",
+      "default": "./packages/protocol/lib/index.js"
     },
     "./plug": {
-      "types": "./lib/types/plug.d.ts",
-      "default": "./lib/plug.js"
+      "development": {
+        "types": "./packages/plug/src/plug.ts",
+        "default": "./packages/plug/src/plug.ts"
+      },
+      "types": "./packages/plug/lib/types/plug.d.ts",
+      "default": "./packages/plug/lib/plug.js"
+    },
+    "./discovery": {
+      "development": {
+        "types": "./packages/plug/src/discovery.ts",
+        "default": "./packages/plug/src/discovery.ts"
+      },
+      "types": "./packages/plug/lib/types/discovery.d.ts",
+      "default": "./packages/plug/lib/discovery.js"
     },
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./locale/*.json": "./locale/*.json",
-    "./discovery": {
-      "types": "./lib/types/discovery.d.ts",
-      "default": "./lib/discovery.js"
-    }
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
-    "lib",
+    "packages/*/lib/**",
+    "packages/*/src/**",
+    "packages/*/README.md",
+    "packages/*/package.json",
     "locale",
     "cordis.patch.yml",
     "README.md",
@@ -62,45 +128,27 @@
       ]
     }
   },
-  "scripts": {
-    "build": "node scripts/build.mjs && node node_modules/typescript/bin/tsc -p tsconfig.build.json && node node_modules/typescript/bin/tsc -p tsconfig.client.build.json",
-    "check": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc -p tsconfig.client.json --noEmit",
-    "test": "node --import tsx --test test/*.test.ts",
-    "test:history": "npm run build && node scripts/smoke-history.mjs",
-    "link:dsh": "node scripts/link-dsh.mjs",
-    "prepack": "npm run check && npm test && npm run build"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/dsh-workspace": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.1",
-    "@deepseek-ai/cordis": "4.1.0",
-    "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-connection": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-session": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-session-title": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-workspace": { "optional": true },
-    "@deepseek-ai/dsh-api-session-controller": { "optional": true },
-    "@deepseek-ai/dsh-session-title": { "optional": true }
+  "dependencies": {
+    "dsh-editor-plug": "^3.0.0",
+    "dsh-editor-protocol": "^3.0.0"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-workspace": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-session-title": "0.2.2-rc.1",
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-agent-loop-testkit": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-connection": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-locale": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-conversation": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-credentials-local": "0.2.2-rc.1",
     "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
     "@deepseek-ai/dsh-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-title": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-workspace": "0.2.2-rc.1",
     "@deepseek-ai/dsh-working-directory": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-agent-loop-testkit": "0.2.2-rc.1",
     "@types/node": "22.20.1",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
@@ -108,11 +156,14 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "tsx": "4.23.13",
-    "typescript": "6.0.3",
-    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-credentials-local": "0.2.2-rc.1"
+    "typescript": "6.0.3"
   },
-  "dependencies": {
-    "zod": "4.4.3"
+  "scripts": {
+    "build": "npm run build --workspace dsh-editor-protocol && npm run build --workspace dsh-editor-plug && npm run build --workspace dsh-editor-socket",
+    "check": "npm run check --workspace dsh-editor-protocol && npm run check --workspace dsh-editor-plug && npm run check --workspace dsh-editor-socket && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "test": "node --conditions=development --import tsx --test test/*.test.ts",
+    "test:history": "npm run build && node scripts/smoke-history.mjs",
+    "link:dsh": "node scripts/link-dsh.mjs",
+    "prepack": "npm run check && npm test && npm run build"
   }
 }

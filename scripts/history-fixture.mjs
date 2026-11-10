@@ -6,8 +6,8 @@ import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { LlmAdapter, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { discoverSockets } from '../lib/discovery.js'
-import { EditorPlug } from '../lib/plug.js'
+import { discoverSockets } from 'dsh-editor-plug/discovery'
+import { EditorPlug } from 'dsh-editor-plug'
 
 export const name = 'editor-history-fixture'
 export const inject = ['llm', 'agents', 'agentLoop', 'sessionTitle', 'sessionController', 'workspaceRegistry']

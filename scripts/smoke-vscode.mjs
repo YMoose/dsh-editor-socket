@@ -11,8 +11,8 @@ import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@deep
 import { LlmAdapter, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
-import * as Socket from '../lib/index.js'
-import { discoverSockets } from '../lib/discovery.js'
+import * as Socket from 'dsh-editor-socket'
+import { discoverSockets } from 'dsh-editor-plug/discovery'
 
 if (!process.argv[2]) throw new Error('Pass the compiled vsc-agents-connector/out/src/agents/dsh/index.js path')
 const { createDshAdapter } = await import(pathToFileURL(resolve(process.argv[2])).href)

@@ -1,4 +1,4 @@
-import type { EditorState } from '../protocol.ts'
+import type { EditorState } from 'dsh-editor-protocol'
 
 export type Request = (method: string, payload: object, signal?: AbortSignal) => Promise<unknown>
 

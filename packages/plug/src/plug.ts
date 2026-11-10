@@ -1,6 +1,6 @@
 /** Small editor-side client; no VS Code or DSH runtime imports. */
-import { CHANNEL, PROTOCOL_VERSION, SocketError, record } from './protocol.ts'
-import type { ConnectRequest, ConnectionReceipt, EditorSnapshot, EditorState, SessionDescriptor } from './protocol.ts'
+import { CHANNEL, PROTOCOL_VERSION, SocketError, record } from 'dsh-editor-protocol'
+import type { ConnectRequest, ConnectionReceipt, EditorSnapshot, EditorState, SessionDescriptor } from 'dsh-editor-protocol'
 
 export interface PlugOptions {
   /** The dedicated loopback endpoint from a validated socket registration. */

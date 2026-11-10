@@ -2,10 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { EditorReferences } from '../src/client/Dock.tsx'
-import { observeEditor } from '../src/client/observer.ts'
-import { zh } from '../src/client/locales.ts'
-import type { EditorState } from '../src/protocol.ts'
+import { EditorReferences } from 'dsh-editor-socket/client/Dock.tsx'
+import { observeEditor } from 'dsh-editor-socket/client/observer.ts'
+import { zh } from 'dsh-editor-socket/client/locales.ts'
+import type { EditorState } from 'dsh-editor-protocol'
 
 const state: EditorState = {
   workspace: '/tmp', version: 'v1', editor: 'VS Code', connected: true,

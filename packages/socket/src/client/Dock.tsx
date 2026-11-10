@@ -1,7 +1,7 @@
 import * as React from 'react'
 import type { PropsRuntime, PropsLocale, InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { EditorState } from '../protocol.ts'
+import type { EditorState } from 'dsh-editor-protocol'
 import { observeEditor } from './observer.ts'
 import type { Request } from './observer.ts'
 import type { NS, Key } from './locales.ts'

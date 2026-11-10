@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "lib/types",
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/client"]
+}

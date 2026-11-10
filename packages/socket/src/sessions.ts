@@ -5,8 +5,8 @@ import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import type {} from '@deepseek-ai/dsh-workspace'
 import type {} from '@deepseek-ai/dsh-session-title/types'
-import { normalizePath } from './protocol.ts'
-import type { SessionDescriptor } from './protocol.ts'
+import { normalizePath } from 'dsh-editor-protocol'
+import type { SessionDescriptor } from 'dsh-editor-protocol'
 
 export class EditorSessions {
   constructor(private readonly ctx: Context) {}

@@ -1,18 +1,8 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2023",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "jsx": "react-jsx",
-    "rewriteRelativeImportExtensions": true,
     "types": ["node", "react", "react-dom"]
   },
-  "include": ["src", "test"],
-  "exclude": ["src/client", "test/client.test.ts"]
+  "include": ["test"],
+  "exclude": ["test/client.test.ts"]
 }

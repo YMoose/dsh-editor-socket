@@ -1,0 +1,113 @@
+{
+  "name": "dsh-editor-socket",
+  "version": "0.3.0",
+  "description": "DSH host half of the editor socket: authenticated editor RPC and durable, prompt-correlated model context.",
+  "type": "module",
+  "license": "MIT",
+  "author": "YMOOSE <42179813+YMoose@users.noreply.github.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YMoose/dsh-editor-socket.git",
+    "directory": "packages/socket"
+  },
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.1"
+  },
+  "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "development": {
+        "types": "./src/index.ts",
+        "default": "./src/index.ts"
+      },
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./store": {
+      "development": {
+        "types": "./src/store.ts",
+        "default": "./src/store.ts"
+      },
+      "types": "./lib/types/store.d.ts",
+      "default": "./lib/store.js"
+    },
+    "./sessions": {
+      "development": {
+        "types": "./src/sessions.ts",
+        "default": "./src/sessions.ts"
+      },
+      "types": "./lib/types/sessions.d.ts",
+      "default": "./lib/sessions.js"
+    },
+    "./captures": {
+      "development": {
+        "types": "./src/captures.ts",
+        "default": "./src/captures.ts"
+      },
+      "types": "./lib/types/captures.d.ts",
+      "default": "./lib/captures.js"
+    },
+    "./transport": {
+      "development": {
+        "types": "./src/transport.ts",
+        "default": "./src/transport.ts"
+      },
+      "types": "./lib/types/transport.d.ts",
+      "default": "./lib/transport.js"
+    },
+    "./config": {
+      "development": {
+        "types": "./src/config.ts",
+        "default": "./src/config.ts"
+      },
+      "types": "./lib/types/config.d.ts",
+      "default": "./lib/config.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./client/*": {
+      "development": "./src/client/*"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.build.json && node ../../node_modules/typescript/bin/tsc -p tsconfig.client.build.json && node build.mjs",
+    "check": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node ../../node_modules/typescript/bin/tsc -p tsconfig.client.json --noEmit"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-workspace": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.1",
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-connection": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-title": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-workspace": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-api-session-controller": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-session-title": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "dsh-editor-protocol": "^3.0.0",
+    "dsh-editor-plug": "^3.0.0",
+    "zod": "4.4.3"
+  }
+}

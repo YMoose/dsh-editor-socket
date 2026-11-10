@@ -6,13 +6,13 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed, UserMessage } from '@deepseek-ai/dsh-llm'
 import { appendPluginRecord } from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import { PROTOCOL_VERSION, SocketError, record, string, normalizePath, renderContext } from './protocol.ts'
-import type { EditorSnapshot } from './protocol.ts'
+import { PROTOCOL_VERSION, SocketError, record, string, normalizePath, renderContext } from 'dsh-editor-protocol'
+import type { EditorSnapshot } from 'dsh-editor-protocol'
 import { EditorSessions } from './sessions.ts'
 import { EditorStore } from './store.ts'
 import { resolveConfig } from './config.ts'
 import type { Config } from './config.ts'
-import { startSocket, respond, METHODS } from './transport.ts'
+import { startSocket, respond, METHODS, MUTATIONS, COMPOSER } from './transport.ts'
 import type { Dispatch } from './transport.ts'
 import { capturesProjection } from './captures.ts'
 
@@ -75,12 +75,16 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
         signal.throwIfAborted()
         return { ok: true, value: store.connect(request) }
       }
+      // Editor-side calls carry {workspace, connectionId, sequence} and never a session;
+      // the store validates that lease itself, so no session lookup may run first.
+      if (MUTATIONS.has(method)) return { ok: true, value: store.mutate(method, input) }
+      if (!COMPOSER.has(method)) throw new SocketError('not-found', 'Unknown editor operation')
       // Composer-side calls know only their session; the host maps it to its live directory.
+      // The mapping may be undefined for a session without a directory, which the store tolerates.
       const workspace = directoryOf(string(input.sessionId, 'sessionId', 256))
       if (method === 'state') return { ok: true, value: store.state(workspace) }
       if (method === 'watch') return { ok: true, value: await store.watch(workspace, string(input.version, 'version', 256), signal) }
-      if (method === 'edit') return { ok: true, value: store.edit(workspace, input) }
-      return { ok: true, value: store.mutate(method, input) }
+      return { ok: true, value: store.edit(workspace, input) }
     } catch (error) {
       if (signal.aborted) throw error
       if (error instanceof SocketError) return { ok: false, error: { code: `editor-socket/${error.code}`, message: error.message, details: {} } }

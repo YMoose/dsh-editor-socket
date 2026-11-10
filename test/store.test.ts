@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EditorStore } from '../src/store.ts'
-import { resolveConfig } from '../src/config.ts'
-import { snapshotOf, normalizePath } from '../src/protocol.ts'
+import { EditorStore } from 'dsh-editor-socket/store'
+import { resolveConfig } from 'dsh-editor-socket/config'
+import { snapshotOf, normalizePath } from 'dsh-editor-protocol'
 
 const snapshot = (name = 'a.ts') => ({ path: `/work/${name}`, workspace: '/work', selection: { start: 2, end: 4, text: '未保存的内容' } })
 function setup(config = {}) {
@@ -50,12 +50,15 @@ test('captures freeze the live reference of a directory and serve every session 
 test('lease expiry clears context and frees capacity', () => {
   const { store, mutate, advance } = setup({ maxWorkspaces: 1 })
   mutate('update', 1, { snapshot: snapshot() })
+  // While leased, /work occupies the only workspace slot.
+  assert.throws(() => store.connect({ clientId: 'window', editor: 'VS Code', workspace: '/other' }), /Too many/)
   advance()
   assert.equal(store.state('/work').connected, false)
   assert.equal(store.state('/work').live, null)
   assert.throws(() => mutate('heartbeat', 2), /Reconnect/)
-  assert.throws(() => store.connect({ clientId: 'window', editor: 'VS Code', workspace: '/other' }), /Too many/)
+  // Expiry discarded the lease and the entry, so the slot is free again.
   assert.doesNotThrow(() => store.connect({ clientId: 'window', editor: 'VS Code', workspace: '/work' }))
+  assert.throws(() => store.connect({ clientId: 'window2', editor: 'Other', workspace: '/other' }), /Too many/)
 })
 
 test('browser revisions protect newer selections; unknown controls are rejected without changing state', () => {
