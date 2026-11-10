@@ -137,6 +137,10 @@ for (const socket of await discoverSockets()) {
 
 完整请求格式、操作和错误见 [docs/protocol.md](docs/protocol.md)。
 
+## 故障排查
+
+如果 DSH web 输入框上方没有出现 `Editor context` 引用条，或 socket 服务可达但 UI 完全无反应，见 [docs/troubleshooting.md](docs/troubleshooting.md)。该文档按层（host 插件 → client bundle → composer chip）分解诊断步骤，覆盖 monorepo 布局下 `dsh.client` 字段读取失败、`inject` 缺 `connection` 导致 `/api/editor-socket/*` 404、stale discovery 文件等本仓库特有的陷阱。
+
 ## 开发
 
 如果本机已有安装依赖并构建过的 deepseek-harness checkout，可以离线链接其依赖：

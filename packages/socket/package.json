@@ -14,6 +14,17 @@
     "node": ">=24.9.0",
     "dsh": "0.2.2-rc.1"
   },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
   "exports": {
@@ -102,6 +113,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-session-title": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-connection": {
       "optional": true
     }
   },

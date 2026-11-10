@@ -18,7 +18,7 @@ import { capturesProjection } from './captures.ts'
 
 export type { Config } from './config.ts'
 export const name = 'dsh-editor-socket'
-export const inject = ['connection', 'agents', 'workingDirectory', 'sessionProjections']
+export const inject = ['agents', 'workingDirectory', 'sessionProjections', 'connection']
 
 declare module '@deepseek-ai/dsh-session' {
   interface PluginRecordMap {
@@ -94,19 +94,23 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   }
 
   // Exact native routes work through both Web HTTP and Desktop IPC. DSH enforces owner-only access.
-  for (const method of METHODS) {
-    ctx.connection.fetch.register({
-      path: `/api/editor-socket/${method}`, methods: ['POST'], requestBody: 'buffered',
-      fetch: async request => {
-        try {
-          const value = await respond(dispatch, method, await request.json(), request.signal)
-          return Response.json(value, { headers: { 'cache-control': 'no-store' } })
-        } catch (error) {
-          if (request.signal.aborted) throw error
-          return new Response('Invalid editor socket request', { status: 400 })
-        }
-      },
-    })
+  // The connection service is optional: minimal/headless profiles may not mount it.
+  const connection = ctx.get('connection')
+  if (connection) {
+    for (const method of METHODS) {
+      connection.fetch.register({
+        path: `/api/editor-socket/${method}`, methods: ['POST'], requestBody: 'buffered',
+        fetch: async request => {
+          try {
+            const value = await respond(dispatch, method, await request.json(), request.signal)
+            return Response.json(value, { headers: { 'cache-control': 'no-store' } })
+          } catch (error) {
+            if (request.signal.aborted) throw error
+            return new Response('Invalid editor socket request', { status: 400 })
+          }
+        },
+      })
+    }
   }
 
   // The lease is keyed by working directory, so every session in it — including
