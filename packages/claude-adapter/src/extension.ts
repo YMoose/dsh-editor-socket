@@ -34,8 +34,24 @@ const COOLDOWN_MESSAGE = 'dsh reconnection is cooling down'
 /** Leave headroom under the socket's default 32768-byte selection text budget. */
 const MAX_TEXT_BYTES = 30_000
 
+// File log so we can observe bridge activity from outside VS Code.
+// console.log is not persisted to exthost.log; this file is the only reliable post-mortem.
+const DEBUG_LOG = `${process.env.HOME}/.local/state/dsh-claude-adapter.log`
+function fileLog(message: string): void {
+  try {
+    const fs = require('node:fs') as typeof import('node:fs')
+    const path = require('node:path') as typeof import('node:path')
+    fs.mkdirSync(path.dirname(DEBUG_LOG), { recursive: true })
+    const ts = new Date().toISOString()
+    fs.appendFileSync(DEBUG_LOG, `${ts} ${message}\n`)
+  } catch {
+    // best effort
+  }
+}
+
 function log(message: string): void {
   console.log(`${PREFIX} ${message}`)
+  fileLog(message)
 }
 
 function describe(error: unknown): string {
@@ -236,16 +252,19 @@ class ClaudeBridge {
     try {
       socket = connectClaudeSocket(connection, {
         onSelection: (selection) => {
+          log(`selection_changed: ${selection.filePath} L${selection.selection.start.line}:${selection.selection.start.character}-L${selection.selection.end.line}:${selection.selection.end.character} empty=${selection.selection.isEmpty === true} textLen=${selection.text.length}`)
           void this.push(selection, workspace, handle)
         },
         onClose: () => {
+          log('claude socket closed')
           void this.onSocketClosed(handle)
         },
         onError: (error) => {
           // Node's WebSocket always emits close after error; let onClose drive the reconnect.
           log(`socket error: ${describe(error)}`)
         },
-      })
+      }, WebSocket, (msg) => log(`[claude] ${msg}`))
+      log(`claude socket opened: ${connection.url}`)
     } catch (error) {
       this.socket = undefined
       log(`socket connect failed: ${describe(error)}`)

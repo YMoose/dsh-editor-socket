@@ -182,11 +182,13 @@ export type ClaudeSocketHandlers = {
  *
  * `WebSocketImpl` is injectable so tests can substitute a fake; in
  * production pass the global `WebSocket` (Node 22+ has one built in).
+ * `log` is optional diagnostic output (no message contents, only events).
  */
 export function connectClaudeSocket(
   connection: ClaudeConnection,
   handlers: ClaudeSocketHandlers,
   WebSocketImpl: typeof WebSocket = WebSocket,
+  log?: (message: string) => void,
 ): { close: () => void } {
   const socket = new WebSocketImpl(connection.url, {
     headers: { 'x-claude-code-ide-authorization': connection.authToken },
@@ -231,18 +233,27 @@ export function connectClaudeSocket(
       })
       try {
         socket.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }))
+        log?.('notifications/initialized sent')
       } catch {
         // send races with close; harmless
       }
     }
+    // Log any other inbound methods so we can see what else Claude sends.
+    if (message.method && message.method !== 'selection_changed') {
+      log?.(`inbound method: ${message.method}`)
+    }
   })
 
-  socket.addEventListener('close', () => {
+  socket.addEventListener('close', (event) => {
     if (closed) return
     closed = true
+    const code = (event as CloseEvent).code
+    const reason = (event as CloseEvent).reason
+    log?.(`socket closed code=${code} reason=${reason || '(none)'}`)
     handlers.onClose?.()
   })
   socket.addEventListener('error', () => {
+    log?.(`socket error event`)
     handlers.onError?.(new Error(`Claude IDE socket error on ${connection.url}`))
   })
 

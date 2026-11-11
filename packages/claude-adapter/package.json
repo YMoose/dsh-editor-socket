@@ -2,7 +2,7 @@
   "name": "dsh-editor-claude-adapter",
   "displayName": "DSH: Claude Code Selection Bridge",
   "version": "0.1.0",
-  "description": "VS Code extension: bridge Claude Code IDE selections into dsh-editor-socket.",
+  "description": "EXPERIMENTAL: VS Code extension bridging Claude Code IDE selections into dsh-editor-socket. Known limitation: conflicts with OpenCode TUI's Claude WS client (single-client protocol). Most users should use vsc-agents-connector instead.",
   "type": "module",
   "license": "MIT",
   "author": "YMOOSE <42179813+YMoose@users.noreply.github.com>",
@@ -33,7 +33,7 @@
       }
     }
   },
-  "main": "./lib/extension.js",
+  "main": "./lib/extension.cjs",
   "types": "./lib/types/extension.d.ts",
   "exports": {
     ".": {
@@ -60,7 +60,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json && node build.extension.mjs",
     "check": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
