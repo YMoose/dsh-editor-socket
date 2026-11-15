@@ -1,0 +1,443 @@
+{
+  "packages": {
+    "@deepseek-ai/cordis": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/index.ts",
+            "src/sessions.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-agent": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/captures.ts",
+            "src/sessions.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-api-session-controller": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/sessions.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-client-connection": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/index.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-llm": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/index.ts"
+          ],
+          "value": [
+            "src/index.ts"
+          ]
+        }
+      }
+    },
+    "@deepseek-ai/dsh-session": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/index.ts"
+          ],
+          "value": [
+            "src/captures.ts",
+            "src/index.ts"
+          ]
+        }
+      }
+    },
+    "@deepseek-ai/dsh-session-projection": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/captures.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-session-title/types": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/sessions.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-working-directory": {
+      "declaredIn": [],
+      "roots": {
+        "src": {
+          "type": [
+            "src/sessions.ts"
+          ],
+          "value": []
+        }
+      }
+    },
+    "@deepseek-ai/dsh-workspace": {
+      "declaredIn": [
+        "peerDependencies"
+      ],
+      "roots": {
+        "src": {
+          "type": [
+            "src/sessions.ts"
+          ],
+          "value": []
+        }
+      }
+    }
+  },
+  "injectedServices": [
+    "agents",
+    "connection",
+    "sessionProjections",
+    "workingDirectory"
+  ],
+  "srcHooks": [
+    {
+      "event": "agent/inbox/inserted",
+      "via": "on",
+      "params": [
+        "{ agent, message }"
+      ],
+      "sites": [
+        "src/index.ts:118"
+      ]
+    },
+    {
+      "event": "agent/pre-step",
+      "via": "on",
+      "params": [
+        "{ agent, signal }",
+        "next"
+      ],
+      "sites": [
+        "src/index.ts:124"
+      ]
+    }
+  ],
+  "testHooks": [],
+  "ctxAccesses": {
+    "agents": [
+      "src/index.ts",
+      "src/sessions.ts"
+    ],
+    "effect": [
+      "src/index.ts"
+    ],
+    "get": [
+      "src/index.ts",
+      "src/sessions.ts"
+    ],
+    "logger": [
+      "src/index.ts"
+    ],
+    "on": [
+      "src/index.ts"
+    ],
+    "sessionProjections": [
+      "src/index.ts",
+      "src/sessions.ts"
+    ],
+    "workingDirectory": [
+      "src/sessions.ts"
+    ]
+  },
+  "fieldPaths": {
+    "@deepseek-ai/cordis": {
+      "agents": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:56",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "agents.get": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:56",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "effect": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:142",
+            "guards": [],
+            "pin": true
+          },
+          {
+            "site": "src/index.ts:147",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "get": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:98",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "logger": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:91",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "logger.warn": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:91",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "on": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:118",
+            "guards": [],
+            "pin": true
+          },
+          {
+            "site": "src/index.ts:124",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "sessionProjections": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:51",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "sessionProjections.register": {
+        "rootType": "Context",
+        "accesses": [
+          {
+            "site": "src/index.ts:51",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      }
+    },
+    "@deepseek-ai/dsh-agent": {
+      "id": {
+        "rootType": "Agent",
+        "accesses": [
+          {
+            "site": "src/sessions.ts:42",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "session": {
+        "rootType": "Agent",
+        "accesses": [
+          {
+            "site": "src/sessions.ts:14",
+            "guards": [],
+            "pin": true
+          },
+          {
+            "site": "src/sessions.ts:41",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      },
+      "status": {
+        "rootType": "Agent",
+        "accesses": [
+          {
+            "site": "src/sessions.ts:42",
+            "guards": [],
+            "pin": true
+          }
+        ]
+      }
+    },
+    "event:agent/inbox/inserted": {
+      "agent.session": {
+        "rootType": "unknown",
+        "accesses": [
+          {
+            "site": "src/index.ts:121",
+            "guards": [
+              {
+                "expr": "payload.message.source.kind",
+                "kind": "eq",
+                "literal": "user"
+              }
+            ],
+            "pin": true
+          }
+        ]
+      },
+      "message.id": {
+        "rootType": "unknown",
+        "accesses": [
+          {
+            "site": "src/index.ts:121",
+            "guards": [
+              {
+                "expr": "payload.message.source.kind",
+                "kind": "eq",
+                "literal": "user"
+              }
+            ],
+            "pin": true
+          }
+        ]
+      },
+      "message.source": {
+        "rootType": "unknown",
+        "accesses": [
+          {
+            "site": "src/index.ts:119",
+            "guards": []
+          }
+        ]
+      },
+      "message.source.kind": {
+        "rootType": "unknown",
+        "accesses": [
+          {
+            "site": "src/index.ts:119",
+            "guards": []
+          }
+        ]
+      }
+    },
+    "event:agent/pre-step": {
+      "agent.session": {
+        "rootType": "unknown",
+        "accesses": [
+          {
+            "site": "src/index.ts:127",
+            "guards": [
+              {
+                "expr": "payload.signal.aborted",
+                "kind": "falsy"
+              }
+            ],
+            "pin": true
+          }
+        ]
+      },
+      "signal.aborted": {
+        "rootType": "unknown",
+        "accesses": [
+          {
+            "site": "src/index.ts:126",
+            "guards": []
+          }
+        ]
+      }
+    }
+  },
+  "discriminants": {
+    "event:agent/inbox/inserted": {
+      "message.source.kind": [
+        "user"
+      ]
+    }
+  },
+  "augmentations": {
+    "@deepseek-ai/dsh-llm": {
+      "MessageSourceMap": {
+        "editor-socket": {
+          "kind": "property",
+          "type": "{ kind: 'editor-socket' } & import('@deepseek-ai/dsh-llm').ContextFormed",
+          "optional": false,
+          "site": "src/index.ts:32"
+        }
+      }
+    },
+    "@deepseek-ai/dsh-session": {
+      "PluginRecordMap": {
+        "plugin:editor-socket/capture": {
+          "kind": "property",
+          "type": "{ messageId: string; snapshots: any }",
+          "optional": false,
+          "site": "src/index.ts:25"
+        }
+      }
+    }
+  }
+}
