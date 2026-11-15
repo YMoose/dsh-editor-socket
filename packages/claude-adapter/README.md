@@ -28,7 +28,7 @@ VS Code 扩展：把 **Claude Code** 的 IDE 选区转发进 `dsh-editor-socket`
 
 1. **发现**：读取 Claude IDE 锁文件挑选匹配当前工作区的连接，同时用 `discoverSockets()` 找 dsh-editor-socket 的注册文件；任一侧缺失都按 1s→2s→…→30s 退避重试。
 2. **WS 连接**：向 Claude 的 `ws://127.0.0.1:<port>` 完成 `initialize` 握手，随后持续接收 `selection_changed` 通知。
-3. **转发**：把通知转换成 `EditorSnapshot`（1-based 行、0-based 列；空光标只发文件路径；超 30KB 的文本丢弃但保留行号）后通过 `EditorPlug.update()` 推给 DSH。DSH 断线时保留最近一次选区并在冷却后重放。
+3. **转发**：把通知转换成 `EditorSnapshot`（Claude IDE 协议给的是 **0-based 行/列**，转换成插件的 1-based 行、0-based 列；空光标只发文件路径；超 30KB 的文本丢弃但保留行号）后通过 `EditorPlug.update()` 推给 DSH。DSH 断线时保留最近一次选区并在冷却后重放。
 
 ## 配置
 

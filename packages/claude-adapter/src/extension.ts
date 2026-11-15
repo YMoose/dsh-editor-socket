@@ -11,6 +11,8 @@
  */
 
 import { createHash } from 'node:crypto'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import * as vscode from 'vscode'
 import { EditorPlug, discoverSockets } from 'dsh-editor-plug'
 import type { Registration } from 'dsh-editor-plug'
@@ -36,7 +38,9 @@ const MAX_TEXT_BYTES = 30_000
 
 // File log so we can observe bridge activity from outside VS Code.
 // console.log is not persisted to exthost.log; this file is the only reliable post-mortem.
-const DEBUG_LOG = `${process.env.HOME}/.local/state/dsh-claude-adapter.log`
+// process.env.HOME is unset on Windows (USERPROFILE instead), so resolve the state directory
+// through os.homedir() exactly like dsh-editor-plug's discovery does.
+const DEBUG_LOG = join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'dsh-claude-adapter.log')
 function fileLog(message: string): void {
   try {
     const fs = require('node:fs') as typeof import('node:fs')
@@ -66,8 +70,11 @@ function samePath(left: string, right: string): boolean {
 }
 
 /**
- * Claude Code → dsh snapshot. Positions are already 1-based line + 0-based
- * character on both sides, so no arithmetic is needed.
+ * Claude Code → dsh snapshot. The IDE protocol reports VS Code's own 0-based
+ * line and 0-based character positions (verified against Claude Code 2.1.325:
+ * a file's first line arrives as `line: 0`), while the editor-socket wire
+ * format uses 1-based inclusive lines and 0-based characters. Only the lines
+ * shift; the characters pass through unchanged and `end` stays exclusive.
  *
  * An empty caret selection is a *file* reference, not a range: send no
  * `selection` at all so the composer chip degrades to a bare path.
@@ -76,12 +83,14 @@ export function toSnapshot(selection: ClaudeSelection, workspace: string): Edito
   const base = { path: selection.filePath, workspace }
   if (selection.selection.isEmpty === true) return base
   const { start, end } = selection.selection
+  const lineStart = start.line + 1
+  const lineEnd = end.line + 1
   // The protocol rejects a reversed pair on a single line; drop columns instead of failing the update.
-  const columns = start.line === end.line && end.character < start.character
+  const columns = lineStart === lineEnd && end.character < start.character
     ? {}
     : { startCharacter: start.character, endCharacter: end.character }
   const text = Buffer.byteLength(selection.text, 'utf8') <= MAX_TEXT_BYTES ? { text: selection.text } : {}
-  return { ...base, selection: { start: start.line, end: end.line, ...columns, ...text } }
+  return { ...base, selection: { start: lineStart, end: lineEnd, ...columns, ...text } }
 }
 
 type PlugAttempt = { readonly plug: EditorPlug } | { readonly failure: 'no-socket' | 'busy' }

@@ -12,7 +12,9 @@
  *     serverInfo; client sends `notifications/initialized`; server then
  *     pushes `selection_changed` notifications whenever the user's selection
  *     changes (including immediately after init, with the current selection).
- *   - Selection positions are 1-based lines + 0-based characters.
+ *   - Selection positions are 0-based lines + 0-based characters (VS Code positions;
+ *     verified against Claude Code 2.1.325). The extension shifts lines to the
+ *     editor-socket's 1-based format when building a snapshot.
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
