@@ -3,7 +3,7 @@ name: seam-gate
 # dsh-seam Level 1 契约门禁（coupling.json 提交于 packages/socket）：
 #   scan --check —— 防改了源码忘更新契约（嫌疑清单为 advisory，Level 2 后判红）
 #   verify       —— 防上游 @deepseek-ai/* 破坏插件用到的类型/服务/事件签名
-# 版本锚：钉住 dsh-seam 的具体 commit（origin.md 原则 3：不拉浮动 HEAD）；
+# 版本锚：钉住 dsh-seam 的具体 commit（docs/design.md 原则 3：不拉浮动 HEAD）；
 # 升级时把两处 ref 一并换成新 tag/commit。
 
 on:
@@ -21,6 +21,6 @@ jobs:
           node-version: 24
       - run: npm ci
       - name: coupling drift gate (scan --check)
-        run: npx github:YMoose/dsh-seam#9c46cfdeadc65440c423da297ed18730ad28772b scan --root packages/socket --check
+        run: npx github:YMoose/dsh-seam#b74df109aca3d523a0b3bbfeffe507ed2bb6d038 scan --root packages/socket --check
       - name: contract compile gate (verify)
-        run: npx github:YMoose/dsh-seam#9c46cfdeadc65440c423da297ed18730ad28772b verify --repo packages/socket
+        run: npx github:YMoose/dsh-seam#b74df109aca3d523a0b3bbfeffe507ed2bb6d038 verify --repo packages/socket

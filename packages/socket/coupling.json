@@ -1,4 +1,10 @@
 {
+  "schemaVersion": 1,
+  "generator": {
+    "dshSeam": "0.1.0",
+    "typescript": "6.0.3"
+  },
+  "generatedAt": "2026-11-15T07:32:48.359Z",
   "packages": {
     "@deepseek-ai/cordis": {
       "declaredIn": [
