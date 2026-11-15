@@ -1,6 +1,6 @@
 {
   "name": "dsh-editor-socket",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "DSH host half of the editor socket: authenticated editor RPC and durable, prompt-correlated model context.",
   "type": "module",
   "license": "MIT",
@@ -75,6 +75,22 @@
       },
       "types": "./lib/types/config.d.ts",
       "default": "./lib/config.js"
+    },
+    "./claude": {
+      "development": {
+        "types": "./src/claude.ts",
+        "default": "./src/claude.ts"
+      },
+      "types": "./lib/types/claude.d.ts",
+      "default": "./lib/claude.js"
+    },
+    "./claude-bridge": {
+      "development": {
+        "types": "./src/claude-bridge.ts",
+        "default": "./src/claude-bridge.ts"
+      },
+      "types": "./lib/types/claude-bridge.d.ts",
+      "default": "./lib/claude-bridge.js"
     },
     "./client": {
       "types": "./lib/types/client/index.d.ts",

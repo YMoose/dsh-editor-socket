@@ -15,6 +15,7 @@ import type { Config } from './config.ts'
 import { startSocket, respond, METHODS, MUTATIONS, COMPOSER } from './transport.ts'
 import type { Dispatch } from './transport.ts'
 import { capturesProjection } from './captures.ts'
+import { ClaudeSelectionBridge } from './claude-bridge.ts'
 
 export type { Config } from './config.ts'
 export const name = 'dsh-editor-socket'
@@ -148,4 +149,32 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     const socket = await startSocket(dispatch, config.discoveryDirectory, Math.max(262_144, limits.maxSelectionBytes * 6 + 32_768))
     return socket.close
   }, 'editor-socket: local editor endpoint')
+
+  // Optional in-process source: follow the local Claude Code IDE selection without any
+  // VS Code bridge extension. A real editor connection always outranks it (see store.connect).
+  if (config.claudeBridge ?? true) {
+    // Persisted-but-unloaded sessions still name a directory; include them so an idle
+    // workspace is followed before its session is reopened. The session list is cached briefly.
+    let persisted: { at: number; directories: readonly string[] } = { at: 0, directories: [] }
+    const workspaces = async (): Promise<readonly string[]> => {
+      if (Date.now() - persisted.at > 10_000) {
+        try {
+          persisted = { at: Date.now(), directories: (await sessions.list(new AbortController().signal)).map(item => item.directory) }
+        } catch {
+          // Keep the last known directories when the session list is unavailable.
+        }
+      }
+      return [...new Set([...persisted.directories, ...ctx.agents.list().map(agent => directory(agent))])]
+    }
+    ctx.effect(() => {
+      const bridge = new ClaudeSelectionBridge({
+        store,
+        workspaces,
+        lockRoot: config.claudeLockRoot,
+        logger: { info: message => ctx.logger.info(message), warn: message => ctx.logger.warn(message) },
+      })
+      bridge.start()
+      return () => bridge.stop()
+    }, 'editor-socket: Claude Code bridge')
+  }
 }

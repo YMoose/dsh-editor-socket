@@ -1,6 +1,6 @@
 {
   "name": "dsh-editor-socket",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Session-scoped editor file and selection context for DeepSeek Harness.",
   "private": true,
   "type": "module",
@@ -67,6 +67,22 @@
       },
       "types": "./packages/socket/lib/types/config.d.ts",
       "default": "./packages/socket/lib/config.js"
+    },
+    "./claude": {
+      "development": {
+        "types": "./packages/socket/src/claude.ts",
+        "default": "./packages/socket/src/claude.ts"
+      },
+      "types": "./packages/socket/lib/types/claude.d.ts",
+      "default": "./packages/socket/lib/claude.js"
+    },
+    "./claude-bridge": {
+      "development": {
+        "types": "./packages/socket/src/claude-bridge.ts",
+        "default": "./packages/socket/src/claude-bridge.ts"
+      },
+      "types": "./packages/socket/lib/types/claude-bridge.d.ts",
+      "default": "./packages/socket/lib/claude-bridge.js"
     },
     "./client": {
       "types": "./packages/socket/lib/types/client/index.d.ts",

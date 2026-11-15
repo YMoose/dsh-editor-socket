@@ -9,6 +9,18 @@ interface Entry {
   live: EditorSnapshot | null
 }
 
+/**
+ * Client id prefix for in-process bridges (the built-in Claude Code bridge).
+ * A real editor may take a workspace lease over from a bridge, but never from
+ * another editor window; bridges also yield while a real editor owns the lease.
+ */
+export const BRIDGE_CLIENT_PREFIX = 'dsh-editor-socket:bridge:'
+
+/** Whether `clientId` was issued by an in-process bridge rather than a real editor. */
+export function isBridgeClientId(clientId: string): boolean {
+  return clientId.startsWith(BRIDGE_CLIENT_PREFIX)
+}
+
 /** Owns transient editor state per working directory, shared by every session in it. */
 export class EditorStore {
   private readonly entries = new Map<string, Entry>()
@@ -25,7 +37,10 @@ export class EditorStore {
     const workspace = normalizePath(input.workspace)
     this.expire()
     let entry = this.entries.get(workspace)
-    if (entry?.lease && entry.lease.clientId !== input.clientId) throw new SocketError('busy', 'This workspace is connected to another editor window')
+    // A real editor always wins over an in-process bridge; an editor never displaces another editor.
+    if (entry?.lease && entry.lease.clientId !== input.clientId && !isBridgeClientId(entry.lease.clientId)) {
+      throw new SocketError('busy', 'This workspace is connected to another editor window')
+    }
     if (!entry) {
       if (this.entries.size >= this.limits.maxWorkspaces) throw new SocketError('capacity', 'Too many connected workspaces')
       entry = { workspace, version: this.version(), live: null }
@@ -72,6 +87,12 @@ export class EditorStore {
     entry.live = null
     this.changed(entry.workspace, entry)
     return this.state(entry.workspace)
+  }
+
+  /** Owner of a live workspace lease, if any; bridges use it to yield to a real editor. */
+  clientIdOf(workspace: string): string | undefined {
+    this.expire()
+    return this.entries.get(normalizePath(workspace))?.lease?.clientId
   }
 
   state(workspace: string | undefined): EditorState {
